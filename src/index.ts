@@ -4,19 +4,19 @@
  * @packageDocumentation
  */
 
-/** Total size in bits of the `nodeId` and `counter` fields. */
+/** The total size in bits of the `nodeId` and `counter` fields. */
 const NODE_CTR_SIZE = 24;
 
-/// Maximum valid value of the `timestamp` field.
+/// The maximum valid value of the `timestamp` field.
 const TIMESTAMP_MAX = 282_429_536_480; // (36n ** 12n - 1n) >> 24n
 
-/// Maximum valid value of the combined `nodeCtr` field.
+/// The maximum valid value of the combined `nodeCtr` field.
 const NODE_CTR_MAX = (1 << NODE_CTR_SIZE) - 1;
 
 /** Digit characters used in the Base36 notation. */
 const DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz";
 
-/** O(1) map from ASCII code points to Base36 digit values. */
+/** An O(1) map from ASCII code points to Base36 digit values. */
 const DECODE_MAP = [
   0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f,
   0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f,
@@ -33,12 +33,12 @@ const DECODE_MAP = [
 /** Represents a SCRU64 ID. */
 export class Scru64Id {
   /**
-   * 8-byte byte array containing the 64-bit unsigned integer representation in
-   * the big-endian (network) byte order.
+   * An 8-byte byte array containing the 64-bit unsigned integer representation
+   * in the big-endian (network) byte order.
    */
   readonly bytes: Readonly<Uint8Array>;
 
-  /** Creates an object from a 8-byte byte array. */
+  /** Creates an object from an 8-byte byte array. */
   private constructor(bytes: Readonly<Uint8Array>) {
     this.bytes = bytes;
   }
@@ -453,7 +453,7 @@ export class Scru64Generator {
         this.prevNodeCtr = this.initNodeCtr();
       }
     } else {
-      // abort if clock moves back to unbearable extent
+      // abort if clock went backwards to unbearable extent
       return undefined;
     }
     return Scru64Id.fromParts(this.prevTimestamp, this.prevNodeCtr);
