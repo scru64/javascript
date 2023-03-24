@@ -8,10 +8,10 @@
 const NODE_CTR_SIZE = 24;
 
 /// The maximum valid value of the `timestamp` field.
-const TIMESTAMP_MAX = 282_429_536_480; // (36n ** 12n - 1n) >> 24n
+const MAX_TIMESTAMP = 282_429_536_480; // (36n ** 12n - 1n) >> 24n
 
 /// The maximum valid value of the combined `nodeCtr` field.
-const NODE_CTR_MAX = (1 << NODE_CTR_SIZE) - 1;
+const MAX_NODE_CTR = (1 << NODE_CTR_SIZE) - 1;
 
 /** Digit characters used in the Base36 notation. */
 const DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz";
@@ -159,13 +159,13 @@ export class Scru64Id {
   static fromParts(timestamp: number, nodeCtr: number): Scru64Id {
     if (
       timestamp < 0 ||
-      timestamp > TIMESTAMP_MAX ||
+      timestamp > MAX_TIMESTAMP ||
       !Number.isInteger(timestamp)
     ) {
       throw new RangeError("`timestamp` out of range");
     } else if (
       nodeCtr < 0 ||
-      nodeCtr > NODE_CTR_MAX ||
+      nodeCtr > MAX_NODE_CTR ||
       !Number.isInteger(nodeCtr)
     ) {
       throw new RangeError("`nodeCtr` out of range");
