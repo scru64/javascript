@@ -350,7 +350,7 @@ export class Scru64Generator {
    * See the {@link Scru64Generator} class documentation for the description.
    */
   generate(): Scru64Id | undefined {
-    return this.generateOrAbortCore(Date.now());
+    return this.generateOrAbortCore(Date.now(), 10_000);
   }
 
   /**
@@ -360,7 +360,7 @@ export class Scru64Generator {
    * See the {@link Scru64Generator} class documentation for the description.
    */
   generateOrReset(): Scru64Id {
-    return this.generateOrResetCore(Date.now());
+    return this.generateOrResetCore(Date.now(), 10_000);
   }
 
   /**
@@ -407,11 +407,13 @@ export class Scru64Generator {
    *
    * See the {@link Scru64Generator} class documentation for the description.
    *
+   * @param rollbackAllowance - The amount of `unixTsMs` rollback that is
+   * considered significant. A suggested value is `10_000` (milliseconds).
    * @throws RangeError if `unixTsMs` is not a positive integer within the valid
    * range.
    */
-  generateOrResetCore(unixTsMs: number): Scru64Id {
-    const value = this.generateOrAbortCore(unixTsMs);
+  generateOrResetCore(unixTsMs: number, rollbackAllowance: number): Scru64Id {
+    const value = this.generateOrAbortCore(unixTsMs, rollbackAllowance);
     if (value !== undefined) {
       return value;
     } else {
@@ -428,21 +430,27 @@ export class Scru64Generator {
    *
    * See the {@link Scru64Generator} class documentation for the description.
    *
+   * @param rollbackAllowance - The amount of `unixTsMs` rollback that is
+   * considered significant. A suggested value is `10_000` (milliseconds).
    * @throws RangeError if `unixTsMs` is not a positive integer within the valid
    * range.
    */
-  generateOrAbortCore(unixTsMs: number): Scru64Id | undefined {
-    const ROLLBACK_ALLOWANCE = 40; // x256 milliseconds = ~10 seconds
-
+  generateOrAbortCore(
+    unixTsMs: number,
+    rollbackAllowance: number
+  ): Scru64Id | undefined {
     const timestamp = Math.trunc(unixTsMs / 0x100);
+    const allowance = Math.trunc(rollbackAllowance / 0x100);
     if (timestamp <= 0) {
       throw new RangeError("`timestamp` out of range");
+    } else if (allowance < 0 || allowance > 0xff_ffff_ffff) {
+      throw new RangeError("`rollbackAllowance` out of reasonable range");
     }
 
     if (timestamp > this.prevTimestamp) {
       this.prevTimestamp = timestamp;
       this.prevNodeCtr = this.initNodeCtr();
-    } else if (timestamp + ROLLBACK_ALLOWANCE > this.prevTimestamp) {
+    } else if (timestamp + allowance > this.prevTimestamp) {
       // go on with previous timestamp if new one is not much smaller
       const counterMask = (1 << this.counterSize) - 1;
       if ((this.prevNodeCtr & counterMask) < counterMask) {
