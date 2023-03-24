@@ -248,23 +248,23 @@ export class Scru64Id {
  *
  * The generator offers six different methods to generate a SCRU64 ID:
  *
- * | Flavor                       | Timestamp | On big clock rewind  |
- * | ---------------------------- | --------- | -------------------- |
- * | {@link generate}             | Now       | Rewinds state        |
- * | {@link generateNoRewind}     | Now       | Returns `undefined`  |
- * | {@link generateOrWait}       | Now       | Waits (blocking)     |
- * | {@link generateOrWaitAsync}  | Now       | Waits (non-blocking) |
- * | {@link generateCore}         | Argument  | Rewinds state        |
- * | {@link generateCoreNoRewind} | Argument  | Returns `undefined`  |
+ * | Flavor                      | Timestamp | On big clock rewind |
+ * | --------------------------- | --------- | ------------------- |
+ * | {@link generate}            | Now       | Returns `undefined` |
+ * | {@link generateOrReset}     | Now       | Resets generator    |
+ * | {@link generateOrSleep}     | Now       | Sleeps (blocking)   |
+ * | {@link generateOrAwait}     | Now       | Sleeps (async)      |
+ * | {@link generateOrAbortCore} | Argument  | Returns `undefined` |
+ * | {@link generateOrResetCore} | Argument  | Resets generator    |
  *
- * Each method returns monotonically increasing IDs unless a timestamp provided
- * is significantly (by ~10 seconds or more) smaller than the one embedded in
- * the immediately preceding ID. If such a significant clock rollback is
- * detected, (i) the standard `generate` rewinds the generator state and returns
- * a new ID based on the current timestamp; (ii) `NoRewind` variants keep the
- * state untouched and return `undefined`; and, (iii) `OrWait` functions sleep
- * and wait for the next timestamp tick. `core` functions offer low-level
- * primitives.
+ * All of these methods return monotonically increasing IDs unless a timestamp
+ * provided is significantly (by default, approx. 10 seconds or more) smaller
+ * than the one embedded in the immediately preceding ID. If such a significant
+ * clock rollback is detected, (1) the `generate` (OrAbort) method aborts and
+ * returns `undefined`; (2) the `OrReset` variants reset the generator and
+ * return a new ID based on the given timestamp; and, (3) the `OrSleep` and
+ * `OrAwait` methods sleep and wait for the next timestamp tick. The `Core`
+ * functions offer low-level primitives.
  */
 export class Scru64Generator {
   private prevTimestamp: number;
@@ -344,37 +344,37 @@ export class Scru64Generator {
   }
 
   /**
-   * Generates a new SCRU64 ID object from the current `timestamp`.
+   * Generates a new SCRU64 ID object from the current `timestamp`, or returns
+   * `undefined` upon significant timestamp rollback.
    *
    * See the {@link Scru64Generator} class documentation for the description.
    */
-  generate(): Scru64Id {
-    return this.generateCore(Date.now());
+  generate(): Scru64Id | undefined {
+    return this.generateOrAbortCore(Date.now());
   }
 
   /**
-   * Generates a new SCRU64 ID object from the current `timestamp`, guaranteeing
-   * the monotonic order of generated IDs despite a significant timestamp
-   * rollback.
+   * Generates a new SCRU64 ID object from the current `timestamp`, or resets
+   * the generator upon significant timestamp rollback.
    *
    * See the {@link Scru64Generator} class documentation for the description.
    */
-  generateNoRewind(): Scru64Id | undefined {
-    return this.generateCoreNoRewind(Date.now());
+  generateOrReset(): Scru64Id {
+    return this.generateOrResetCore(Date.now());
   }
 
   /**
-   * Returns a new SCRU64 ID object, or waits for one if not immediately
-   * available.
+   * Returns a new SCRU64 ID object, or synchronously sleeps and waits for one
+   * if not immediately available.
    *
    * See the {@link Scru64Generator} class documentation for the description.
    *
    * This method uses a blocking busy loop to wait for the next `timestamp`
-   * tick. Use {@link generateOrWaitAsync} where possible.
+   * tick. Use {@link generateOrAwait} where possible.
    */
-  generateOrWait(): Scru64Id {
+  generateOrSleep(): Scru64Id {
     while (true) {
-      const value = this.generateNoRewind();
+      const value = this.generate();
       if (value !== undefined) {
         return value;
       } else {
@@ -384,15 +384,15 @@ export class Scru64Generator {
   }
 
   /**
-   * Returns a new SCRU64 ID object, or waits for one if not immediately
-   * available.
+   * Returns a new SCRU64 ID object, or asynchronously sleeps and waits for one
+   * if not immediately available.
    *
    * See the {@link Scru64Generator} class documentation for the description.
    */
-  async generateOrWaitAsync(): Promise<Scru64Id> {
+  async generateOrAwait(): Promise<Scru64Id> {
     const DELAY = 64;
     while (true) {
-      const value = this.generateNoRewind();
+      const value = this.generate();
       if (value !== undefined) {
         return value;
       } else {
@@ -402,15 +402,16 @@ export class Scru64Generator {
   }
 
   /**
-   * Generates a new SCRU64 ID object from a Unix timestamp in milliseconds.
+   * Generates a new SCRU64 ID object from a Unix timestamp in milliseconds, or
+   * resets the generator upon significant timestamp rollback.
    *
    * See the {@link Scru64Generator} class documentation for the description.
    *
-   * @throws RangeError if the argument is not a positive integer within the
-   * valid range.
+   * @throws RangeError if `unixTsMs` is not a positive integer within the valid
+   * range.
    */
-  generateCore(unixTsMs: number): Scru64Id {
-    const value = this.generateCoreNoRewind(unixTsMs);
+  generateOrResetCore(unixTsMs: number): Scru64Id {
+    const value = this.generateOrAbortCore(unixTsMs);
     if (value !== undefined) {
       return value;
     } else {
@@ -422,16 +423,15 @@ export class Scru64Generator {
   }
 
   /**
-   * Generates a new SCRU64 ID object from a Unix timestamp in milliseconds,
-   * guaranteeing the monotonic order of generated IDs despite a significant
-   * timestamp rollback.
+   * Generates a new SCRU64 ID object from a Unix timestamp in milliseconds, or
+   * returns `undefined` upon significant timestamp rollback.
    *
    * See the {@link Scru64Generator} class documentation for the description.
    *
-   * @throws RangeError if the argument is not a positive integer within the
-   * valid range.
+   * @throws RangeError if `unixTsMs` is not a positive integer within the valid
+   * range.
    */
-  generateCoreNoRewind(unixTsMs: number): Scru64Id | undefined {
+  generateOrAbortCore(unixTsMs: number): Scru64Id | undefined {
     const ROLLBACK_ALLOWANCE = 40; // x256 milliseconds = ~10 seconds
 
     const timestamp = Math.trunc(unixTsMs / 0x100);
@@ -482,7 +482,7 @@ const getGlobalGenerator = (): Scru64Generator => {
  * @throws Error if the global generator is not properly configured through the
  * `SCRU64_NODE_SPEC` global variable.
  */
-export const scru64 = (): Scru64Id => getGlobalGenerator().generateOrWait();
+export const scru64 = (): Scru64Id => getGlobalGenerator().generateOrSleep();
 
 /**
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
@@ -500,7 +500,7 @@ export const scru64String = (): string => scru64().toString();
  * `SCRU64_NODE_SPEC` global variable.
  */
 export const scru64Async = async (): Promise<Scru64Id> =>
-  getGlobalGenerator().generateOrWaitAsync();
+  getGlobalGenerator().generateOrAwait();
 
 /**
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
