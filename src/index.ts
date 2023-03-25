@@ -487,8 +487,16 @@ const getGlobalGenerator = (): Scru64Generator => {
 /**
  * Generates a new SCRU64 ID object using the global generator.
  *
+ * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+ * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
+ * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ *
+ * This function usually returns a value immediately, but if not possible, it
+ * sleeps and waits for the next timestamp tick. It employs a blocking busy loop
+ * to wait; use the non-blocking {@link scru64Async} where possible.
+ *
  * @throws Error if the global generator is not properly configured through the
- * `SCRU64_NODE_SPEC` global variable.
+ * global variable.
  */
 export const scru64 = (): Scru64Id => getGlobalGenerator().generateOrSleep();
 
@@ -496,16 +504,31 @@ export const scru64 = (): Scru64Id => getGlobalGenerator().generateOrSleep();
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
  * representation using the global generator.
  *
+ * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+ * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
+ * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ *
+ * This function usually returns a value immediately, but if not possible, it
+ * sleeps and waits for the next timestamp tick. It employs a blocking busy loop
+ * to wait; use the non-blocking {@link scru64StringAsync} where possible.
+ *
  * @throws Error if the global generator is not properly configured through the
- * `SCRU64_NODE_SPEC` global variable.
+ * global variable.
  */
 export const scru64String = (): string => scru64().toString();
 
 /**
  * Generates a new SCRU64 ID object using the global generator.
  *
+ * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+ * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
+ * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ *
+ * This function usually returns a value immediately, but if not possible, it
+ * sleeps and waits for the next timestamp tick.
+ *
  * @throws Error if the global generator is not properly configured through the
- * `SCRU64_NODE_SPEC` global variable.
+ * global variable.
  */
 export const scru64Async = async (): Promise<Scru64Id> =>
   getGlobalGenerator().generateOrAwait();
@@ -514,8 +537,15 @@ export const scru64Async = async (): Promise<Scru64Id> =>
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
  * representation using the global generator.
  *
+ * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+ * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
+ * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ *
+ * This function usually returns a value immediately, but if not possible, it
+ * sleeps and waits for the next timestamp tick.
+ *
  * @throws Error if the global generator is not properly configured through the
- * `SCRU64_NODE_SPEC` global variable.
+ * global variable.
  */
 export const scru64StringAsync = async (): Promise<string> =>
   (await scru64Async()).toString();
