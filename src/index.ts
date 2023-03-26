@@ -521,12 +521,13 @@ const getGlobalGenerator = (): Scru64Generator => {
  *
  * This function usually returns a value immediately, but if not possible, it
  * sleeps and waits for the next timestamp tick. It employs a blocking busy loop
- * to wait; use the non-blocking {@link scru64Async} where possible.
+ * to wait; use the non-blocking {@link scru64} where possible.
  *
  * @throws Error if the global generator is not properly configured through the
  * global variable.
  */
-export const scru64 = (): Scru64Id => getGlobalGenerator().generateOrSleep();
+export const scru64Sync = (): Scru64Id =>
+  getGlobalGenerator().generateOrSleep();
 
 /**
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
@@ -538,12 +539,12 @@ export const scru64 = (): Scru64Id => getGlobalGenerator().generateOrSleep();
  *
  * This function usually returns a value immediately, but if not possible, it
  * sleeps and waits for the next timestamp tick. It employs a blocking busy loop
- * to wait; use the non-blocking {@link scru64StringAsync} where possible.
+ * to wait; use the non-blocking {@link scru64String} where possible.
  *
  * @throws Error if the global generator is not properly configured through the
  * global variable.
  */
-export const scru64String = (): string => scru64().toString();
+export const scru64StringSync = (): string => scru64Sync().toString();
 
 /**
  * Generates a new SCRU64 ID object using the global generator.
@@ -558,7 +559,7 @@ export const scru64String = (): string => scru64().toString();
  * @throws Error if the global generator is not properly configured through the
  * global variable.
  */
-export const scru64Async = async (): Promise<Scru64Id> =>
+export const scru64 = async (): Promise<Scru64Id> =>
   getGlobalGenerator().generateOrAwait();
 
 /**
@@ -575,5 +576,5 @@ export const scru64Async = async (): Promise<Scru64Id> =>
  * @throws Error if the global generator is not properly configured through the
  * global variable.
  */
-export const scru64StringAsync = async (): Promise<string> =>
-  (await scru64Async()).toString();
+export const scru64String = async (): Promise<string> =>
+  (await scru64()).toString();
