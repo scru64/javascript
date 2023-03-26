@@ -31,6 +31,9 @@ describe("Scru64Generator", function () {
   it("fails to initialize with invalid node spec string", function () {
     const cases = [
       "",
+      "42",
+      "/8",
+      "42/",
       " 42/8",
       "42/8 ",
       " 42/8 ",
@@ -41,10 +44,13 @@ describe("Scru64Generator", function () {
       "42/-8",
       "ab/8",
       "0x42/8",
+      "1/2/3",
       "0/0",
       "0/24",
       "8/1",
       "1024/8",
+      "00000000001/8",
+      "1/0016",
     ];
 
     for (const e of cases) {

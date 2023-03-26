@@ -339,7 +339,7 @@ export class Scru64Generator {
    * represents an invalid node configuration.
    */
   static parse(nodeSpec: string): Scru64Generator {
-    const m = nodeSpec.match(/^([0-9]+)\/([0-9]+)$/);
+    const m = nodeSpec.match(/^([0-9]{1,10})\/([0-9]{1,3})$/);
     if (m === null) {
       throw new SyntaxError(
         "invalid `nodeSpec`; it looks like: `42/8`, `12345/16`"
