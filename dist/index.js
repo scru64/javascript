@@ -3,15 +3,17 @@
  *
  * @packageDocumentation
  */
-/** Total size in bits of the `nodeId` and `counter` fields. */
+/** The maximum valid value (i.e., `zzzzzzzzzzzz`). */
+const MAX_SCRU64_BYTES = Uint8Array.of(65, 194, 28, 184, 224, 255, 255, 255);
+/** The total size in bits of the `nodeId` and `counter` fields. */
 const NODE_CTR_SIZE = 24;
-/// Maximum valid value of the `timestamp` field.
-const TIMESTAMP_MAX = 282429536480; // (36n ** 12n - 1n) >> 24n
-/// Maximum valid value of the combined `nodeCtr` field.
-const NODE_CTR_MAX = (1 << NODE_CTR_SIZE) - 1;
+/// The maximum valid value of the `timestamp` field.
+const MAX_TIMESTAMP = 282429536480; // (36n ** 12n - 1n) >> 24n
+/// The maximum valid value of the combined `nodeCtr` field.
+const MAX_NODE_CTR = (1 << NODE_CTR_SIZE) - 1;
 /** Digit characters used in the Base36 notation. */
 const DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz";
-/** O(1) map from ASCII code points to Base36 digit values. */
+/** An O(1) map from ASCII code points to Base36 digit values. */
 const DECODE_MAP = [
     0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f,
     0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f, 0x7f,
@@ -26,9 +28,34 @@ const DECODE_MAP = [
 ];
 /** Represents a SCRU64 ID. */
 export class Scru64Id {
-    /** Creates an object from a 8-byte byte array. */
+    /** Creates an object from an 8-byte byte array. */
     constructor(bytes) {
         this.bytes = bytes;
+    }
+    /**
+     * Creates an object from the internal representation, an 8-byte byte array
+     * containing the 64-bit unsigned integer representation in the big-endian
+     * (network) byte order.
+     *
+     * This method does NOT shallow-copy the argument, and thus the created object
+     * holds the reference to the underlying buffer.
+     *
+     * @throws RangeError if the length of the argument is not 8 or the argument
+     * contains an integer out of the valid value range.
+     */
+    static ofInner(bytes) {
+        if (bytes.length !== 8) {
+            throw new RangeError("invalid length: " + bytes.length);
+        }
+        for (let i = 0; i < 8; i++) {
+            if (bytes[i] > MAX_SCRU64_BYTES[i]) {
+                throw new RangeError("integer out of valid value range");
+            }
+            else if (bytes[i] < MAX_SCRU64_BYTES[i]) {
+                break;
+            }
+        }
+        return new Scru64Id(bytes);
     }
     /**
      * Returns the 12-digit canonical string representation.
@@ -134,12 +161,12 @@ export class Scru64Id {
      */
     static fromParts(timestamp, nodeCtr) {
         if (timestamp < 0 ||
-            timestamp > TIMESTAMP_MAX ||
+            timestamp > MAX_TIMESTAMP ||
             !Number.isInteger(timestamp)) {
             throw new RangeError("`timestamp` out of range");
         }
         else if (nodeCtr < 0 ||
-            nodeCtr > NODE_CTR_MAX ||
+            nodeCtr > MAX_NODE_CTR ||
             !Number.isInteger(nodeCtr)) {
             throw new RangeError("`nodeCtr` out of range");
         }
@@ -177,7 +204,7 @@ export class Scru64Id {
      * Creates an object from `this`.
      *
      * Note that this class is designed to be immutable, and thus `clone()` is not
-     * necessary unless properties marked as private are modified directly.
+     * necessary unless properties marked as read-only are modified.
      */
     clone() {
         return new Scru64Id(this.bytes.slice(0));
@@ -213,23 +240,23 @@ export class Scru64Id {
  *
  * The generator offers six different methods to generate a SCRU64 ID:
  *
- * | Flavor                       | Timestamp | On big clock rewind  |
- * | ---------------------------- | --------- | -------------------- |
- * | {@link generate}             | Now       | Rewinds state        |
- * | {@link generateNoRewind}     | Now       | Returns `undefined`  |
- * | {@link generateOrWait}       | Now       | Waits (blocking)     |
- * | {@link generateOrWaitAsync}  | Now       | Waits (non-blocking) |
- * | {@link generateCore}         | Argument  | Rewinds state        |
- * | {@link generateCoreNoRewind} | Argument  | Returns `undefined`  |
+ * | Flavor                      | Timestamp | On big clock rewind |
+ * | --------------------------- | --------- | ------------------- |
+ * | {@link generate}            | Now       | Returns `undefined` |
+ * | {@link generateOrReset}     | Now       | Resets generator    |
+ * | {@link generateOrSleep}     | Now       | Sleeps (blocking)   |
+ * | {@link generateOrAwait}     | Now       | Sleeps (async)      |
+ * | {@link generateOrAbortCore} | Argument  | Returns `undefined` |
+ * | {@link generateOrResetCore} | Argument  | Resets generator    |
  *
- * Each method returns monotonically increasing IDs unless a timestamp provided
- * is significantly (by ~10 seconds or more) smaller than the one embedded in
- * the immediately preceding ID. If such a significant clock rollback is
- * detected, (i) the standard `generate` rewinds the generator state and returns
- * a new ID based on the current timestamp; (ii) `NoRewind` variants keep the
- * state untouched and return `undefined`; and, (iii) `OrWait` functions sleep
- * and wait for the next timestamp tick. `core` functions offer low-level
- * primitives.
+ * All of these methods return monotonically increasing IDs unless a timestamp
+ * provided is significantly (by default, approx. 10 seconds or more) smaller
+ * than the one embedded in the immediately preceding ID. If such a significant
+ * clock rollback is detected, (1) the `generate` (OrAbort) method aborts and
+ * returns `undefined`; (2) the `OrReset` variants reset the generator and
+ * return a new ID based on the given timestamp; and, (3) the `OrSleep` and
+ * `OrAwait` methods sleep and wait for the next timestamp tick. The `Core`
+ * functions offer low-level primitives.
  */
 export class Scru64Generator {
     /**
@@ -293,35 +320,35 @@ export class Scru64Generator {
         return (this.getNodeId() << this.counterSize) | counter;
     }
     /**
-     * Generates a new SCRU64 ID object from the current `timestamp`.
+     * Generates a new SCRU64 ID object from the current `timestamp`, or returns
+     * `undefined` upon significant timestamp rollback.
      *
      * See the {@link Scru64Generator} class documentation for the description.
      */
     generate() {
-        return this.generateCore(Date.now());
+        return this.generateOrAbortCore(Date.now(), 10000);
     }
     /**
-     * Generates a new SCRU64 ID object from the current `timestamp`, guaranteeing
-     * the monotonic order of generated IDs despite a significant timestamp
-     * rollback.
+     * Generates a new SCRU64 ID object from the current `timestamp`, or resets
+     * the generator upon significant timestamp rollback.
      *
      * See the {@link Scru64Generator} class documentation for the description.
      */
-    generateNoRewind() {
-        return this.generateCoreNoRewind(Date.now());
+    generateOrReset() {
+        return this.generateOrResetCore(Date.now(), 10000);
     }
     /**
-     * Returns a new SCRU64 ID object, or waits for one if not immediately
-     * available.
+     * Returns a new SCRU64 ID object, or synchronously sleeps and waits for one
+     * if not immediately available.
      *
      * See the {@link Scru64Generator} class documentation for the description.
      *
      * This method uses a blocking busy loop to wait for the next `timestamp`
-     * tick. Use {@link generateOrWaitAsync} where possible.
+     * tick. Use {@link generateOrAwait} where possible.
      */
-    generateOrWait() {
+    generateOrSleep() {
         while (true) {
-            const value = this.generateNoRewind();
+            const value = this.generate();
             if (value !== undefined) {
                 return value;
             }
@@ -331,15 +358,15 @@ export class Scru64Generator {
         }
     }
     /**
-     * Returns a new SCRU64 ID object, or waits for one if not immediately
-     * available.
+     * Returns a new SCRU64 ID object, or asynchronously sleeps and waits for one
+     * if not immediately available.
      *
      * See the {@link Scru64Generator} class documentation for the description.
      */
-    async generateOrWaitAsync() {
+    async generateOrAwait() {
         const DELAY = 64;
         while (true) {
-            const value = this.generateNoRewind();
+            const value = this.generate();
             if (value !== undefined) {
                 return value;
             }
@@ -349,15 +376,18 @@ export class Scru64Generator {
         }
     }
     /**
-     * Generates a new SCRU64 ID object from a Unix timestamp in milliseconds.
+     * Generates a new SCRU64 ID object from a Unix timestamp in milliseconds, or
+     * resets the generator upon significant timestamp rollback.
      *
      * See the {@link Scru64Generator} class documentation for the description.
      *
-     * @throws RangeError if the argument is not a positive integer within the
-     * valid range.
+     * @param rollbackAllowance - The amount of `unixTsMs` rollback that is
+     * considered significant. A suggested value is `10_000` (milliseconds).
+     * @throws RangeError if `unixTsMs` is not a positive integer within the valid
+     * range.
      */
-    generateCore(unixTsMs) {
-        const value = this.generateCoreNoRewind(unixTsMs);
+    generateOrResetCore(unixTsMs, rollbackAllowance) {
+        const value = this.generateOrAbortCore(unixTsMs, rollbackAllowance);
         if (value !== undefined) {
             return value;
         }
@@ -369,26 +399,30 @@ export class Scru64Generator {
         }
     }
     /**
-     * Generates a new SCRU64 ID object from a Unix timestamp in milliseconds,
-     * guaranteeing the monotonic order of generated IDs despite a significant
-     * timestamp rollback.
+     * Generates a new SCRU64 ID object from a Unix timestamp in milliseconds, or
+     * returns `undefined` upon significant timestamp rollback.
      *
      * See the {@link Scru64Generator} class documentation for the description.
      *
-     * @throws RangeError if the argument is not a positive integer within the
-     * valid range.
+     * @param rollbackAllowance - The amount of `unixTsMs` rollback that is
+     * considered significant. A suggested value is `10_000` (milliseconds).
+     * @throws RangeError if `unixTsMs` is not a positive integer within the valid
+     * range.
      */
-    generateCoreNoRewind(unixTsMs) {
-        const ROLLBACK_ALLOWANCE = 40; // x256 milliseconds = ~10 seconds
+    generateOrAbortCore(unixTsMs, rollbackAllowance) {
         const timestamp = Math.trunc(unixTsMs / 0x100);
+        const allowance = Math.trunc(rollbackAllowance / 0x100);
         if (timestamp <= 0) {
             throw new RangeError("`timestamp` out of range");
+        }
+        else if (allowance < 0 || allowance > 1099511627775) {
+            throw new RangeError("`rollbackAllowance` out of reasonable range");
         }
         if (timestamp > this.prevTimestamp) {
             this.prevTimestamp = timestamp;
             this.prevNodeCtr = this.initNodeCtr();
         }
-        else if (timestamp + ROLLBACK_ALLOWANCE > this.prevTimestamp) {
+        else if (timestamp + allowance > this.prevTimestamp) {
             // go on with previous timestamp if new one is not much smaller
             const counterMask = (1 << this.counterSize) - 1;
             if ((this.prevNodeCtr & counterMask) < counterMask) {
@@ -401,7 +435,7 @@ export class Scru64Generator {
             }
         }
         else {
-            // abort if clock moves back to unbearable extent
+            // abort if clock went backwards to unbearable extent
             return undefined;
         }
         return Scru64Id.fromParts(this.prevTimestamp, this.prevNodeCtr);
@@ -420,30 +454,60 @@ const getGlobalGenerator = () => {
 /**
  * Generates a new SCRU64 ID object using the global generator.
  *
+ * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+ * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
+ * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ *
+ * This function usually returns a value immediately, but if not possible, it
+ * sleeps and waits for the next timestamp tick. It employs a blocking busy loop
+ * to wait; use the non-blocking {@link scru64} where possible.
+ *
  * @throws Error if the global generator is not properly configured through the
- * `SCRU64_NODE_SPEC` global variable.
+ * global variable.
  */
-export const scru64 = () => getGlobalGenerator().generateOrWait();
+export const scru64Sync = () => getGlobalGenerator().generateOrSleep();
 /**
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
  * representation using the global generator.
  *
+ * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+ * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
+ * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ *
+ * This function usually returns a value immediately, but if not possible, it
+ * sleeps and waits for the next timestamp tick. It employs a blocking busy loop
+ * to wait; use the non-blocking {@link scru64String} where possible.
+ *
  * @throws Error if the global generator is not properly configured through the
- * `SCRU64_NODE_SPEC` global variable.
+ * global variable.
  */
-export const scru64String = () => scru64().toString();
+export const scru64StringSync = () => scru64Sync().toString();
 /**
  * Generates a new SCRU64 ID object using the global generator.
  *
+ * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+ * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
+ * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ *
+ * This function usually returns a value immediately, but if not possible, it
+ * sleeps and waits for the next timestamp tick.
+ *
  * @throws Error if the global generator is not properly configured through the
- * `SCRU64_NODE_SPEC` global variable.
+ * global variable.
  */
-export const scru64Async = async () => getGlobalGenerator().generateOrWaitAsync();
+export const scru64 = async () => getGlobalGenerator().generateOrAwait();
 /**
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
  * representation using the global generator.
  *
+ * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+ * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
+ * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ *
+ * This function usually returns a value immediately, but if not possible, it
+ * sleeps and waits for the next timestamp tick.
+ *
  * @throws Error if the global generator is not properly configured through the
- * `SCRU64_NODE_SPEC` global variable.
+ * global variable.
  */
-export const scru64StringAsync = async () => (await scru64Async()).toString();
+export const scru64String = async () => (await scru64()).toString();

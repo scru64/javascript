@@ -16,17 +16,17 @@ distributed nodes. SCRU64 has the following features:
 // pass node ID through global variable
 globalThis.SCRU64_NODE_SPEC = "42/8";
 
-import { scru64, scru64String } from "scru64";
+import { scru64Sync, scru64StringSync } from "scru64";
 // or on browsers:
-// import { scru64, scru64String } from "https://unpkg.com/scru64@^0.1";
+// import { scru64Sync, scru64StringSync } from "https://unpkg.com/scru64@^0.2";
 
 // generate a new identifier object
-const x = scru64();
+const x = scru64Sync();
 console.log(String(x)); // e.g. "0u2r85hm2pt3"
 console.log(BigInt(x.toHex())); // as a 64-bit unsigned integer
 
 // generate a textual representation directly
-console.log(scru64String()); // e.g. "0u2r85hm2pt4"
+console.log(scru64StringSync()); // e.g. "0u2r85hm2pt4"
 ```
 
 See [SCRU64 Specification] for details.
@@ -45,3 +45,4 @@ Licensed under the Apache License, Version 2.0.
 ## See also
 
 - [API Documentation](https://scru64.github.io/javascript/docs/)
+- [Run tests on your browser](https://scru64.github.io/javascript/test/)

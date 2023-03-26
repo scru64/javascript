@@ -6,12 +6,24 @@
 /** Represents a SCRU64 ID. */
 export declare class Scru64Id {
     /**
-     * 8-byte byte array containing the 64-bit unsigned integer representation in
-     * the big-endian (network) byte order.
+     * An 8-byte byte array containing the 64-bit unsigned integer representation
+     * in the big-endian (network) byte order.
      */
     readonly bytes: Readonly<Uint8Array>;
-    /** Creates an object from a 8-byte byte array. */
+    /** Creates an object from an 8-byte byte array. */
     private constructor();
+    /**
+     * Creates an object from the internal representation, an 8-byte byte array
+     * containing the 64-bit unsigned integer representation in the big-endian
+     * (network) byte order.
+     *
+     * This method does NOT shallow-copy the argument, and thus the created object
+     * holds the reference to the underlying buffer.
+     *
+     * @throws RangeError if the length of the argument is not 8 or the argument
+     * contains an integer out of the valid value range.
+     */
+    static ofInner(bytes: Uint8Array): Scru64Id;
     /**
      * Returns the 12-digit canonical string representation.
      *
@@ -62,7 +74,7 @@ export declare class Scru64Id {
      * Creates an object from `this`.
      *
      * Note that this class is designed to be immutable, and thus `clone()` is not
-     * necessary unless properties marked as private are modified directly.
+     * necessary unless properties marked as read-only are modified.
      */
     clone(): Scru64Id;
     /** Returns true if `this` is equivalent to `other`. */
@@ -80,23 +92,23 @@ export declare class Scru64Id {
  *
  * The generator offers six different methods to generate a SCRU64 ID:
  *
- * | Flavor                       | Timestamp | On big clock rewind  |
- * | ---------------------------- | --------- | -------------------- |
- * | {@link generate}             | Now       | Rewinds state        |
- * | {@link generateNoRewind}     | Now       | Returns `undefined`  |
- * | {@link generateOrWait}       | Now       | Waits (blocking)     |
- * | {@link generateOrWaitAsync}  | Now       | Waits (non-blocking) |
- * | {@link generateCore}         | Argument  | Rewinds state        |
- * | {@link generateCoreNoRewind} | Argument  | Returns `undefined`  |
+ * | Flavor                      | Timestamp | On big clock rewind |
+ * | --------------------------- | --------- | ------------------- |
+ * | {@link generate}            | Now       | Returns `undefined` |
+ * | {@link generateOrReset}     | Now       | Resets generator    |
+ * | {@link generateOrSleep}     | Now       | Sleeps (blocking)   |
+ * | {@link generateOrAwait}     | Now       | Sleeps (async)      |
+ * | {@link generateOrAbortCore} | Argument  | Returns `undefined` |
+ * | {@link generateOrResetCore} | Argument  | Resets generator    |
  *
- * Each method returns monotonically increasing IDs unless a timestamp provided
- * is significantly (by ~10 seconds or more) smaller than the one embedded in
- * the immediately preceding ID. If such a significant clock rollback is
- * detected, (i) the standard `generate` rewinds the generator state and returns
- * a new ID based on the current timestamp; (ii) `NoRewind` variants keep the
- * state untouched and return `undefined`; and, (iii) `OrWait` functions sleep
- * and wait for the next timestamp tick. `core` functions offer low-level
- * primitives.
+ * All of these methods return monotonically increasing IDs unless a timestamp
+ * provided is significantly (by default, approx. 10 seconds or more) smaller
+ * than the one embedded in the immediately preceding ID. If such a significant
+ * clock rollback is detected, (1) the `generate` (OrAbort) method aborts and
+ * returns `undefined`; (2) the `OrReset` variants reset the generator and
+ * return a new ID based on the given timestamp; and, (3) the `OrSleep` and
+ * `OrAwait` methods sleep and wait for the next timestamp tick. The `Core`
+ * functions offer low-level primitives.
  */
 export declare class Scru64Generator {
     private prevTimestamp;
@@ -133,84 +145,118 @@ export declare class Scru64Generator {
      */
     private initNodeCtr;
     /**
-     * Generates a new SCRU64 ID object from the current `timestamp`.
+     * Generates a new SCRU64 ID object from the current `timestamp`, or returns
+     * `undefined` upon significant timestamp rollback.
      *
      * See the {@link Scru64Generator} class documentation for the description.
      */
-    generate(): Scru64Id;
+    generate(): Scru64Id | undefined;
     /**
-     * Generates a new SCRU64 ID object from the current `timestamp`, guaranteeing
-     * the monotonic order of generated IDs despite a significant timestamp
-     * rollback.
+     * Generates a new SCRU64 ID object from the current `timestamp`, or resets
+     * the generator upon significant timestamp rollback.
      *
      * See the {@link Scru64Generator} class documentation for the description.
      */
-    generateNoRewind(): Scru64Id | undefined;
+    generateOrReset(): Scru64Id;
     /**
-     * Returns a new SCRU64 ID object, or waits for one if not immediately
-     * available.
+     * Returns a new SCRU64 ID object, or synchronously sleeps and waits for one
+     * if not immediately available.
      *
      * See the {@link Scru64Generator} class documentation for the description.
      *
      * This method uses a blocking busy loop to wait for the next `timestamp`
-     * tick. Use {@link generateOrWaitAsync} where possible.
+     * tick. Use {@link generateOrAwait} where possible.
      */
-    generateOrWait(): Scru64Id;
+    generateOrSleep(): Scru64Id;
     /**
-     * Returns a new SCRU64 ID object, or waits for one if not immediately
-     * available.
+     * Returns a new SCRU64 ID object, or asynchronously sleeps and waits for one
+     * if not immediately available.
      *
      * See the {@link Scru64Generator} class documentation for the description.
      */
-    generateOrWaitAsync(): Promise<Scru64Id>;
+    generateOrAwait(): Promise<Scru64Id>;
     /**
-     * Generates a new SCRU64 ID object from a Unix timestamp in milliseconds.
+     * Generates a new SCRU64 ID object from a Unix timestamp in milliseconds, or
+     * resets the generator upon significant timestamp rollback.
      *
      * See the {@link Scru64Generator} class documentation for the description.
      *
-     * @throws RangeError if the argument is not a positive integer within the
-     * valid range.
+     * @param rollbackAllowance - The amount of `unixTsMs` rollback that is
+     * considered significant. A suggested value is `10_000` (milliseconds).
+     * @throws RangeError if `unixTsMs` is not a positive integer within the valid
+     * range.
      */
-    generateCore(unixTsMs: number): Scru64Id;
+    generateOrResetCore(unixTsMs: number, rollbackAllowance: number): Scru64Id;
     /**
-     * Generates a new SCRU64 ID object from a Unix timestamp in milliseconds,
-     * guaranteeing the monotonic order of generated IDs despite a significant
-     * timestamp rollback.
+     * Generates a new SCRU64 ID object from a Unix timestamp in milliseconds, or
+     * returns `undefined` upon significant timestamp rollback.
      *
      * See the {@link Scru64Generator} class documentation for the description.
      *
-     * @throws RangeError if the argument is not a positive integer within the
-     * valid range.
+     * @param rollbackAllowance - The amount of `unixTsMs` rollback that is
+     * considered significant. A suggested value is `10_000` (milliseconds).
+     * @throws RangeError if `unixTsMs` is not a positive integer within the valid
+     * range.
      */
-    generateCoreNoRewind(unixTsMs: number): Scru64Id | undefined;
+    generateOrAbortCore(unixTsMs: number, rollbackAllowance: number): Scru64Id | undefined;
 }
 /**
  * Generates a new SCRU64 ID object using the global generator.
  *
+ * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+ * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
+ * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ *
+ * This function usually returns a value immediately, but if not possible, it
+ * sleeps and waits for the next timestamp tick. It employs a blocking busy loop
+ * to wait; use the non-blocking {@link scru64} where possible.
+ *
  * @throws Error if the global generator is not properly configured through the
- * `SCRU64_NODE_SPEC` global variable.
+ * global variable.
  */
-export declare const scru64: () => Scru64Id;
+export declare const scru64Sync: () => Scru64Id;
 /**
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
  * representation using the global generator.
  *
+ * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+ * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
+ * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ *
+ * This function usually returns a value immediately, but if not possible, it
+ * sleeps and waits for the next timestamp tick. It employs a blocking busy loop
+ * to wait; use the non-blocking {@link scru64String} where possible.
+ *
  * @throws Error if the global generator is not properly configured through the
- * `SCRU64_NODE_SPEC` global variable.
+ * global variable.
  */
-export declare const scru64String: () => string;
+export declare const scru64StringSync: () => string;
 /**
  * Generates a new SCRU64 ID object using the global generator.
  *
+ * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+ * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
+ * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ *
+ * This function usually returns a value immediately, but if not possible, it
+ * sleeps and waits for the next timestamp tick.
+ *
  * @throws Error if the global generator is not properly configured through the
- * `SCRU64_NODE_SPEC` global variable.
+ * global variable.
  */
-export declare const scru64Async: () => Promise<Scru64Id>;
+export declare const scru64: () => Promise<Scru64Id>;
 /**
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
  * representation using the global generator.
  *
+ * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+ * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
+ * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ *
+ * This function usually returns a value immediately, but if not possible, it
+ * sleeps and waits for the next timestamp tick.
+ *
  * @throws Error if the global generator is not properly configured through the
- * `SCRU64_NODE_SPEC` global variable.
+ * global variable.
  */
-export declare const scru64StringAsync: () => Promise<string>;
+export declare const scru64String: () => Promise<string>;
