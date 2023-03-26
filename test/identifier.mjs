@@ -75,7 +75,24 @@ describe("Scru64Id", function () {
     for (const e of TEST_CASES) {
       const x = Scru64Id.fromParts(e.timestamp, e.nodeCtr);
 
+      assert(Scru64Id.ofInner(e.bytes).equals(x));
       assert(Scru64Id.fromString(e.text).equals(x));
+      assert(Scru64Id.fromString(e.text.toUpperCase()).equals(x));
+    }
+  });
+
+  it("rejects byte array containing integer out of valid range", function () {
+    const cases = [
+      new Uint8Array(7),
+      new Uint8Array(9),
+      Uint8Array.of(65, 194, 28, 184, 225, 0, 0, 0), // 36n ** 12n
+      new Uint8Array(8).fill(0xff),
+    ];
+
+    for (const e of cases) {
+      assertThrows(() => {
+        Scru64Id.ofInner(e);
+      }, RangeError);
     }
   });
 

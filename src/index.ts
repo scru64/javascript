@@ -4,6 +4,9 @@
  * @packageDocumentation
  */
 
+/** The maximum valid value (i.e., `zzzzzzzzzzzz`). */
+const MAX_SCRU64_BYTES = Uint8Array.of(65, 194, 28, 184, 224, 255, 255, 255);
+
 /** The total size in bits of the `nodeId` and `counter` fields. */
 const NODE_CTR_SIZE = 24;
 
@@ -41,6 +44,31 @@ export class Scru64Id {
   /** Creates an object from an 8-byte byte array. */
   private constructor(bytes: Readonly<Uint8Array>) {
     this.bytes = bytes;
+  }
+
+  /**
+   * Creates an object from the internal representation, an 8-byte byte array
+   * containing the 64-bit unsigned integer representation in the big-endian
+   * (network) byte order.
+   *
+   * This method does NOT shallow-copy the argument, and thus the created object
+   * holds the reference to the underlying buffer.
+   *
+   * @throws RangeError if the length of the argument is not 8 or the argument
+   * contains an integer out of the valid value range.
+   */
+  static ofInner(bytes: Uint8Array) {
+    if (bytes.length !== 8) {
+      throw new RangeError("invalid length: " + bytes.length);
+    }
+    for (let i = 0; i < 8; i++) {
+      if (bytes[i] > MAX_SCRU64_BYTES[i]) {
+        throw new RangeError("integer out of valid value range");
+      } else if (bytes[i] < MAX_SCRU64_BYTES[i]) {
+        break;
+      }
+    }
+    return new Scru64Id(bytes);
   }
 
   /**
@@ -208,7 +236,7 @@ export class Scru64Id {
    * Creates an object from `this`.
    *
    * Note that this class is designed to be immutable, and thus `clone()` is not
-   * necessary unless properties marked as private are modified directly.
+   * necessary unless properties marked as read-only are modified.
    */
   clone(): Scru64Id {
     return new Scru64Id(this.bytes.slice(0));
