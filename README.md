@@ -45,3 +45,4 @@ Licensed under the Apache License, Version 2.0.
 ## See also
 
 - [API Documentation](https://scru64.github.io/javascript/docs/)
+- [Run tests on your browser](https://scru64.github.io/javascript/test/)
