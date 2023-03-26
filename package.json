@@ -15,7 +15,7 @@
     "doc": "typedoc ./src/index.ts --gitRevision \"v$npm_package_version\"",
     "prebuild": "rm -rf ./dist",
     "predoc": "rm -rf ./docs",
-    "prepare": "npm run build && npm run doc",
+    "prepare": "npm run build && npm run doc && npm test",
     "test": "mocha"
   },
   "repository": {
