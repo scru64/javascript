@@ -321,25 +321,10 @@ export class Scru64Generator {
   /**
    * Creates a new generator with the given node configuration.
    *
-   * @param nodeSpec - A node configuration specifier. A node spec is usually
-   * expressed as a node spec string, which starts with a decimal `nodeId`, a
-   * hexadecimal `nodeId` prefixed with `"0x"`, or a 12-digit `nodePrev` SCRU64
-   * ID value, followed by a slash and a decimal `nodeIdSize` value ranging from
-   * 1 to 23 (e.g., `"42/8"`, `"0xb00/12"`, `"0u2r85hm2pt3/16"`). The first and
-   * second forms create a fresh new generator with the given `nodeId`, while
-   * the third form constructs one that generates subsequent SCRU64 IDs to the
-   * `nodePrev`.
-   *
    * @throws `SyntaxError` if an invalid string `nodeSpec` is passed or
    * `RangeError` if an invalid object `nodeSpec` is passed.
    */
-  constructor(
-    nodeSpec:
-      | string
-      | { nodeId: number; nodeIdSize: number }
-      | { nodePrev: Scru64Id; nodeIdSize: number },
-    counterMode?: CounterMode,
-  ) {
+  constructor(nodeSpec: NodeSpec, counterMode?: CounterMode) {
     this.prevTimestamp = 0;
     this.prevNodeCtr = 0;
 
@@ -557,6 +542,23 @@ export class Scru64Generator {
     return Scru64Id.fromParts(this.prevTimestamp, this.prevNodeCtr);
   }
 }
+
+/**
+ * Represents a node configuration specifier used to build a
+ * {@link Scru64Generator}.
+ *
+ * A `NodeSpec` is usually expressed as a node spec string, which starts with a
+ * decimal `nodeId`, a hexadecimal `nodeId` prefixed with `"0x"`, or a 12-digit
+ * `nodePrev` SCRU64 ID value, followed by a slash and a decimal `nodeIdSize`
+ * value ranging from 1 to 23 (e.g., `"42/8"`, `"0xb00/12"`, `"0u2r85hm2pt3/16"`).
+ * The first and second forms create a fresh new generator with the given
+ * `nodeId`, while the third form constructs one that generates subsequent
+ * SCRU64 IDs to the `nodePrev`.
+ */
+export type NodeSpec =
+  | string
+  | { nodeId: number; nodeIdSize: number }
+  | { nodePrev: Scru64Id; nodeIdSize: number };
 
 /**
  * An interface of objects to customize the initial counter value for each new
