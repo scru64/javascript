@@ -17,7 +17,6 @@ describe("Scru64Id", function () {
           curr.bytes.every((elem, i) => elem === twin.bytes[i]),
       );
       assert(curr.toBigInt() === twin.toBigInt());
-      assert(curr.toHex() === twin.toHex());
       assert(String(curr) === String(twin));
       assert(JSON.stringify(curr) === JSON.stringify(twin));
       assert(curr.timestamp === twin.timestamp);
@@ -31,7 +30,6 @@ describe("Scru64Id", function () {
           !curr.bytes.every((elem, i) => elem === prev.bytes[i]),
       );
       assert(curr.toBigInt() !== prev.toBigInt());
-      assert(curr.toHex() !== prev.toHex());
       assert(String(curr) !== String(prev));
       assert(JSON.stringify(curr) !== JSON.stringify(prev));
       assert(
@@ -67,7 +65,6 @@ describe("Scru64Id", function () {
           x.bytes.every((elem, i) => elem === e.bytes[i]),
       );
       assert(x.toBigInt() === e.num);
-      assert(BigInt(x.toHex()) === e.num);
       assert(String(x) === e.text);
       assert(x.timestamp === e.timestamp);
       assert(x.nodeCtr === e.nodeCtr);

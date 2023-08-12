@@ -245,22 +245,6 @@ export class Scru64Id {
     );
   }
 
-  /**
-   * Returns the 64-bit unsigned integer representation as a 16-digit
-   * hexadecimal string prefixed with "0x".
-   *
-   * @category Conversion
-   */
-  toHex(): string {
-    const digits = "0123456789abcdef";
-    let text = "0x";
-    for (const e of this.bytes) {
-      text += digits.charAt(e >>> 4);
-      text += digits.charAt(e & 0xf);
-    }
-    return text;
-  }
-
   /** Represents `this` in JSON as a 12-digit canonical string. */
   toJSON(): string {
     return this.toString();
