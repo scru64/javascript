@@ -316,6 +316,7 @@ export class Scru64Generator {
   private prevTimestamp: number;
   private prevNodeCtr: number;
   private readonly counterSize: number;
+  private readonly counterMode: CounterMode;
 
   /**
    * Creates a new generator with the given node configuration.
@@ -337,6 +338,7 @@ export class Scru64Generator {
       | string
       | { nodeId: number; nodeIdSize: number }
       | { nodePrev: Scru64Id; nodeIdSize: number },
+    counterMode?: CounterMode,
   ) {
     this.prevTimestamp = 0;
     this.prevNodeCtr = 0;
@@ -400,6 +402,10 @@ export class Scru64Generator {
     } else {
       throw new Error("invalid `nodeSpec` argument");
     }
+
+    // reserve one overflow guard bit if `counterSize` is four or less
+    this.counterMode =
+      counterMode ?? new DefaultCounterMode(this.counterSize <= 4 ? 1 : 0);
   }
 
   /** Returns the `nodeId` of the generator. */
@@ -416,13 +422,15 @@ export class Scru64Generator {
    * Calculates the combined `nodeCtr` field value for the next `timestamp`
    * tick.
    */
-  private initNodeCtr(): number {
-    // initialize counter at `counter_size - 1`-bit random number
-    const OVERFLOW_GUARD_SIZE = 1;
-    const limit = 1 << (this.counterSize - OVERFLOW_GUARD_SIZE);
-    const counter = Math.trunc(Math.random() * limit);
+  private renewNodeCtr(timestamp: number): number {
+    const nodeId = this.getNodeId();
+    const context = { timestamp, nodeId };
+    const counter = this.counterMode.renew(this.counterSize, context);
+    if (counter >= 1 << this.counterSize) {
+      throw new Error("illegal `CounterMode` implementation");
+    }
 
-    return (this.getNodeId() << this.counterSize) | counter;
+    return (nodeId << this.counterSize) | counter;
   }
 
   /**
@@ -501,7 +509,7 @@ export class Scru64Generator {
     } else {
       // reset state and resume
       this.prevTimestamp = Math.trunc(unixTsMs / 0x100);
-      this.prevNodeCtr = this.initNodeCtr();
+      this.prevNodeCtr = this.renewNodeCtr(this.prevTimestamp);
       return Scru64Id.fromParts(this.prevTimestamp, this.prevNodeCtr);
     }
   }
@@ -531,7 +539,7 @@ export class Scru64Generator {
 
     if (timestamp > this.prevTimestamp) {
       this.prevTimestamp = timestamp;
-      this.prevNodeCtr = this.initNodeCtr();
+      this.prevNodeCtr = this.renewNodeCtr(this.prevTimestamp);
     } else if (timestamp + allowance > this.prevTimestamp) {
       // go on with previous timestamp if new one is not much smaller
       const counterMask = (1 << this.counterSize) - 1;
@@ -540,13 +548,62 @@ export class Scru64Generator {
       } else {
         // increment timestamp at counter overflow
         this.prevTimestamp++;
-        this.prevNodeCtr = this.initNodeCtr();
+        this.prevNodeCtr = this.renewNodeCtr(this.prevTimestamp);
       }
     } else {
       // abort if clock went backwards to unbearable extent
       return undefined;
     }
     return Scru64Id.fromParts(this.prevTimestamp, this.prevNodeCtr);
+  }
+}
+
+/**
+ * An interface of objects to customize the initial counter value for each new
+ * `timestamp`.
+ *
+ * {@link Scru64Generator} calls `renew()` to obtain the initial counter value
+ * when the `timestamp` field has changed since the immediately preceding ID.
+ * Types implementing this trait may apply their respective logic to calculate
+ * the initial counter value.
+ */
+export type CounterMode = {
+  /**
+   * Returns the next initial counter value of `counterSize` bits.
+   *
+   * {@link Scru64Generator} passes the `counterSize` (from 1 to 23) and other
+   * context information that may be useful for counter renewal. The returned
+   * value must be within the range of `counterSize`-bit unsigned integer.
+   */
+  renew(
+    counterSize: number,
+    context: { timestamp: number; nodeId: number },
+  ): number;
+};
+
+/**
+ * The default "initialize a portion counter" strategy.
+ *
+ * With this strategy, the counter is reset to a random number for each new
+ * `timestamp` tick, but some specified leading bits are set to zero to reserve
+ * space as the counter overflow guard.
+ *
+ * Note that the random number generator employed is not cryptographically
+ * strong.  This mode does not pay for security because a small random number is
+ * insecure anyway.
+ */
+export class DefaultCounterMode {
+  /** Creates a new instance with the size (in bits) of overflow guard bits. */
+  constructor(private readonly overflowGuardSize: number) {
+    if (overflowGuardSize < 0 || !Number.isInteger(overflowGuardSize)) {
+      throw new RangeError("`overflowGuardSize` must be an unsigned integer");
+    }
+  }
+
+  /** Returns the next initial counter value of `counterSize` bits. */
+  renew(counterSize: number, context: {}): number {
+    const k = Math.max(0, counterSize - this.overflowGuardSize);
+    return Math.trunc(Math.random() * (1 << k));
   }
 }
 
