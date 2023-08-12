@@ -57,7 +57,7 @@ export class Scru64Id {
    * @throws RangeError if the length of the argument is not 8 or the argument
    * contains an integer out of the valid value range.
    */
-  static ofInner(bytes: Uint8Array) {
+  static ofInner(bytes: Readonly<Uint8Array>) {
     if (bytes.length !== 8) {
       throw new RangeError("invalid length: " + bytes.length);
     }
@@ -69,38 +69,6 @@ export class Scru64Id {
       }
     }
     return new Scru64Id(bytes);
-  }
-
-  /**
-   * Returns the 12-digit canonical string representation.
-   *
-   * @category Conversion
-   */
-  toString(): string {
-    const dst = new Uint8Array(12);
-    let minIndex = 99; // any number greater than size of output array
-    for (let i = -2; i < 8; i += 5) {
-      // implement Base36 using 40-bit words
-      let carry = this.subUint(i < 0 ? 0 : i, i + 5);
-
-      // iterate over output array from right to left while carry != 0 but at
-      // least up to place already filled
-      let j = dst.length - 1;
-      for (; carry > 0 || j > minIndex; j--) {
-        console.assert(j >= 0);
-        carry += dst[j] * 0x100_0000_0000;
-        const quo = Math.trunc(carry / 36);
-        dst[j] = carry - quo * 36; // remainder
-        carry = quo;
-      }
-      minIndex = j;
-    }
-
-    let text = "";
-    for (const d of dst) {
-      text += DIGITS.charAt(d);
-    }
-    return text;
   }
 
   /**
@@ -164,17 +132,36 @@ export class Scru64Id {
     return new Scru64Id(dst);
   }
 
-  /** Returns the `timestamp` field value. */
-  get timestamp(): number {
-    return this.subUint(0, 5);
-  }
-
   /**
-   * Returns the `nodeId` and `counter` field values combined as a single
-   * integer.
+   * Returns the 12-digit canonical string representation.
+   *
+   * @category Conversion
    */
-  get nodeCtr(): number {
-    return this.subUint(5, 8);
+  toString(): string {
+    const dst = new Uint8Array(12);
+    let minIndex = 99; // any number greater than size of output array
+    for (let i = -2; i < 8; i += 5) {
+      // implement Base36 using 40-bit words
+      let carry = this.subUint(i < 0 ? 0 : i, i + 5);
+
+      // iterate over output array from right to left while carry != 0 but at
+      // least up to place already filled
+      let j = dst.length - 1;
+      for (; carry > 0 || j > minIndex; j--) {
+        console.assert(j >= 0);
+        carry += dst[j] * 0x100_0000_0000;
+        const quo = Math.trunc(carry / 36);
+        dst[j] = carry - quo * 36; // remainder
+        carry = quo;
+      }
+      minIndex = j;
+    }
+
+    let text = "";
+    for (const d of dst) {
+      text += DIGITS.charAt(d);
+    }
+    return text;
   }
 
   /**
@@ -213,6 +200,19 @@ export class Scru64Id {
     return timestamp === MAX_TIMESTAMP
       ? Scru64Id.ofInner(bytes)
       : new Scru64Id(bytes);
+  }
+
+  /** Returns the `timestamp` field value. */
+  get timestamp(): number {
+    return this.subUint(0, 5);
+  }
+
+  /**
+   * Returns the `nodeId` and `counter` field values combined as a single
+   * integer.
+   */
+  get nodeCtr(): number {
+    return this.subUint(5, 8);
   }
 
   /**
