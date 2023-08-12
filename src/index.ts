@@ -304,13 +304,13 @@ export class Scru64Id {
  * | {@link generateOrResetCore} | Argument  | Resets generator    |
  *
  * All of these methods return monotonically increasing IDs unless a timestamp
- * provided is significantly (by default, approx. 10 seconds or more) smaller
- * than the one embedded in the immediately preceding ID. If such a significant
- * clock rollback is detected, (1) the `generate` (OrAbort) method aborts and
- * returns `undefined`; (2) the `OrReset` variants reset the generator and
- * return a new ID based on the given timestamp; and, (3) the `OrSleep` and
- * `OrAwait` methods sleep and wait for the next timestamp tick. The `Core`
- * functions offer low-level primitives.
+ * provided is significantly (by default, approx. 10 seconds) smaller than the
+ * one embedded in the immediately preceding ID. If such a significant clock
+ * rollback is detected, (1) the `generate` (OrAbort) method aborts and returns
+ * `undefined`; (2) the `OrReset` variants reset the generator and return a new
+ * ID based on the given timestamp; and, (3) the `OrSleep` and `OrAwait` methods
+ * sleep and wait for the next timestamp tick. The `Core` functions offer
+ * low-level primitives.
  */
 export class Scru64Generator {
   private prevTimestamp: number;
@@ -525,7 +525,7 @@ export class Scru64Generator {
     if (timestamp > this.prevTimestamp) {
       this.prevTimestamp = timestamp;
       this.prevNodeCtr = this.renewNodeCtr(this.prevTimestamp);
-    } else if (timestamp + allowance > this.prevTimestamp) {
+    } else if (timestamp + allowance >= this.prevTimestamp) {
       // go on with previous timestamp if new one is not much smaller
       const counterMask = (1 << this.counterSize) - 1;
       if ((this.prevNodeCtr & counterMask) < counterMask) {

@@ -3,9 +3,9 @@ import { assert, assertThrows } from "./assert.mjs";
 
 describe("Scru64Id", function () {
   it("supports equality comparison", function () {
-    const e = TEST_CASES[TEST_CASES.length - 1];
+    const e = EXAMPLE_IDS[EXAMPLE_IDS.length - 1];
     let prev = Scru64Id.fromParts(e.timestamp, e.nodeCtr);
-    for (const e of TEST_CASES) {
+    for (const e of EXAMPLE_IDS) {
       const curr = Scru64Id.fromParts(e.timestamp, e.nodeCtr);
       const twin = Scru64Id.fromParts(e.timestamp, e.nodeCtr);
 
@@ -41,7 +41,7 @@ describe("Scru64Id", function () {
   });
 
   it("supports ordering comparison", function () {
-    const cases = TEST_CASES.slice();
+    const cases = EXAMPLE_IDS.slice();
     cases.sort((a, b) => Number(a.num - b.num));
 
     const e = cases.shift();
@@ -57,7 +57,7 @@ describe("Scru64Id", function () {
   });
 
   it("converts to various types", function () {
-    for (const e of TEST_CASES) {
+    for (const e of EXAMPLE_IDS) {
       const x = Scru64Id.fromParts(e.timestamp, e.nodeCtr);
 
       assert(
@@ -72,7 +72,7 @@ describe("Scru64Id", function () {
   });
 
   it("converts from various types", function () {
-    for (const e of TEST_CASES) {
+    for (const e of EXAMPLE_IDS) {
       const x = Scru64Id.fromParts(e.timestamp, e.nodeCtr);
 
       assert(Scru64Id.ofInner(e.bytes).equals(x));
@@ -120,7 +120,7 @@ describe("Scru64Id", function () {
   });
 });
 
-const TEST_CASES = [
+const EXAMPLE_IDS = [
   { text: "000000000000", num: 0x0000000000000000n, timestamp: 0, nodeCtr: 0 },
   {
     text: "00000009zldr",
@@ -262,7 +262,7 @@ const TEST_CASES = [
   },
 ];
 
-for (const e of TEST_CASES) {
+for (const e of EXAMPLE_IDS) {
   e.bytes = new Uint8Array(8);
   new DataView(e.bytes.buffer).setBigUint64(0, e.num);
 }
