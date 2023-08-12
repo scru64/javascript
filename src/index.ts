@@ -611,19 +611,75 @@ export class DefaultCounterMode {
 
 declare const SCRU64_NODE_SPEC: string | undefined;
 
-let globalGenerator: Scru64Generator | undefined = undefined;
+let globalGen: Scru64Generator | undefined = undefined;
 
 const getGlobalGenerator = (): Scru64Generator => {
-  if (globalGenerator === undefined) {
+  if (globalGen === undefined) {
     if (typeof SCRU64_NODE_SPEC === "undefined") {
       throw new Error(
         "scru64: could not read config from SCRU64_NODE_SPEC global var",
       );
     }
-    globalGenerator = new Scru64Generator(SCRU64_NODE_SPEC);
+    globalGen = new Scru64Generator(SCRU64_NODE_SPEC);
   }
-  return globalGenerator;
+  return globalGen;
 };
+
+/**
+ * The gateway object that forwards supported method calls to the process-wide
+ * global generator.
+ */
+export class GlobalGenerator {
+  private constructor() {}
+
+  /**
+   * Initializes the global generator, if not initialized, with the node spec
+   * passed.
+   *
+   * This method tries to configure the global generator with the argument only
+   * when the global generator is not yet initialized. Otherwise, it preserves
+   * the existing configuration.
+   *
+   * @throws `SyntaxError` or `RangeError` according to the semantics of
+   * {@link Scru64Generator.constructor | new Scru64Generator(nodeSpec)} if the
+   * argument represents an invalid node spec.
+   * @returns `true` if this method configures the global generator or `false`
+   * if it preserves the existing configuration.
+   */
+  static initialize(nodeSpec: NodeSpec): boolean {
+    if (globalGen === undefined) {
+      globalGen = new Scru64Generator(nodeSpec);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  /** Calls {@link Scru64Generator.generate} of the global generator. */
+  static generate(): Scru64Id | undefined {
+    return getGlobalGenerator().generate();
+  }
+
+  /** Calls {@link Scru64Generator.generateOrSleep} of the global generator. */
+  static generateOrSleep(): Scru64Id {
+    return getGlobalGenerator().generateOrSleep();
+  }
+
+  /** Calls {@link Scru64Generator.generateOrAwait} of the global generator. */
+  static async generateOrAwait(): Promise<Scru64Id> {
+    return getGlobalGenerator().generateOrAwait();
+  }
+
+  /** Calls {@link Scru64Generator.getNodeId} of the global generator. */
+  static getNodeId(): number {
+    return getGlobalGenerator().getNodeId();
+  }
+
+  /** Calls {@link Scru64Generator.getNodeIdSize} of the global generator. */
+  static getNodeIdSize(): number {
+    return getGlobalGenerator().getNodeIdSize();
+  }
+}
 
 /**
  * Generates a new SCRU64 ID object using the global generator.
@@ -636,11 +692,9 @@ const getGlobalGenerator = (): Scru64Generator => {
  * sleeps and waits for the next timestamp tick. It employs a blocking busy loop
  * to wait; use the non-blocking {@link scru64} where possible.
  *
- * @throws Error if the global generator is not properly configured through the
- * global variable.
+ * @throws Error if the global generator is not properly configured.
  */
-export const scru64Sync = (): Scru64Id =>
-  getGlobalGenerator().generateOrSleep();
+export const scru64Sync = (): Scru64Id => GlobalGenerator.generateOrSleep();
 
 /**
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
@@ -654,8 +708,7 @@ export const scru64Sync = (): Scru64Id =>
  * sleeps and waits for the next timestamp tick. It employs a blocking busy loop
  * to wait; use the non-blocking {@link scru64String} where possible.
  *
- * @throws Error if the global generator is not properly configured through the
- * global variable.
+ * @throws Error if the global generator is not properly configured.
  */
 export const scru64StringSync = (): string => scru64Sync().toString();
 
@@ -669,11 +722,10 @@ export const scru64StringSync = (): string => scru64Sync().toString();
  * This function usually returns a value immediately, but if not possible, it
  * sleeps and waits for the next timestamp tick.
  *
- * @throws Error if the global generator is not properly configured through the
- * global variable.
+ * @throws Error if the global generator is not properly configured.
  */
 export const scru64 = async (): Promise<Scru64Id> =>
-  getGlobalGenerator().generateOrAwait();
+  GlobalGenerator.generateOrAwait();
 
 /**
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
@@ -686,8 +738,7 @@ export const scru64 = async (): Promise<Scru64Id> =>
  * This function usually returns a value immediately, but if not possible, it
  * sleeps and waits for the next timestamp tick.
  *
- * @throws Error if the global generator is not properly configured through the
- * global variable.
+ * @throws Error if the global generator is not properly configured.
  */
 export const scru64String = async (): Promise<string> =>
   (await scru64()).toString();
