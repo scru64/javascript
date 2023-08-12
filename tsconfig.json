@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2018",
+    "lib": ["dom", "es2018", "es2020.bigint"],
     "module": "node16",
     "moduleResolution": "node16",
     "typeRoots": [],

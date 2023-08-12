@@ -216,6 +216,36 @@ export class Scru64Id {
   }
 
   /**
+   * Creates an object from a 64-bit unsigned integer.
+   *
+   * @throws RangeError if the argument is out of the valid value range.
+   * @category Conversion
+   */
+  static fromBigInt(value: bigint): Scru64Id {
+    if (value < 0 || value >> BigInt(64) > 0) {
+      throw new RangeError("out of 64-bit value range");
+    }
+    const bytes = new Uint8Array(8);
+    for (let i = 7; i >= 0; i--) {
+      bytes[i] = Number(value & BigInt(0xff));
+      value >>= BigInt(8);
+    }
+    return Scru64Id.ofInner(bytes);
+  }
+
+  /**
+   * Returns the 64-bit unsigned integer representation.
+   *
+   * @category Conversion
+   */
+  toBigInt(): bigint {
+    return this.bytes.reduce(
+      (acc, curr) => (acc << BigInt(8)) | BigInt(curr),
+      BigInt(0),
+    );
+  }
+
+  /**
    * Returns the 64-bit unsigned integer representation as a 16-digit
    * hexadecimal string prefixed with "0x".
    *
