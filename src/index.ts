@@ -315,55 +315,91 @@ export class Scru64Id {
 export class Scru64Generator {
   private prevTimestamp: number;
   private prevNodeCtr: number;
-  private counterSize: number;
+  private readonly counterSize: number;
 
   /**
-   * Creates a generator with a node configuration.
+   * Creates a new generator with the given node configuration.
    *
-   * The `nodeId` must fit in `nodeIdSize` bits, where `nodeIdSize` ranges from
-   * 1 to 23, inclusive.
+   * @param nodeSpec - A node configuration specifier. A node spec is usually
+   * expressed as a node spec string, which starts with a decimal `nodeId`, a
+   * hexadecimal `nodeId` prefixed with `"0x"`, or a 12-digit `nodePrev` SCRU64
+   * ID value, followed by a slash and a decimal `nodeIdSize` value ranging from
+   * 1 to 23 (e.g., `"42/8"`, `"0xb00/12"`, `"0u2r85hm2pt3/16"`). The first and
+   * second forms create a fresh new generator with the given `nodeId`, while
+   * the third form constructs one that generates subsequent SCRU64 IDs to the
+   * `nodePrev`.
    *
-   * @throws RangeError if the arguments represent an invalid node
-   * configuration.
+   * @throws `SyntaxError` if an invalid string `nodeSpec` is passed or
+   * `RangeError` if an invalid object `nodeSpec` is passed.
    */
-  constructor(nodeId: number, nodeIdSize: number) {
+  constructor(
+    nodeSpec:
+      | string
+      | { nodeId: number; nodeIdSize: number }
+      | { nodePrev: Scru64Id; nodeIdSize: number },
+  ) {
+    this.prevTimestamp = 0;
+    this.prevNodeCtr = 0;
+
+    let errType = RangeError;
+    if (typeof nodeSpec === "string") {
+      // convert string `nodeSpec` to object
+      errType = SyntaxError;
+      const m = nodeSpec.match(
+        /^(?:([0-9a-z]{12})|([0-9]{1,8}|0x[0-9a-f]{1,6}))\/([0-9]{1,3})$/i,
+      );
+      if (m === null) {
+        throw new errType(
+          'could not parse string as node spec (expected: e.g., "42/8", "0xb00/12", "0u2r85hm2pt3/16")',
+        );
+      } else if (m[1]) {
+        nodeSpec = {
+          nodePrev: Scru64Id.fromString(m[1]),
+          nodeIdSize: parseInt(m[3], 10),
+        };
+      } else if (m[2]) {
+        nodeSpec = {
+          nodeId: parseInt(m[2]),
+          nodeIdSize: parseInt(m[3], 10),
+        };
+      } else {
+        throw new Error("unreachable");
+      }
+    }
+
+    // process object `nodeSpec`
+    const nodeIdSize = nodeSpec.nodeIdSize;
     if (
-      nodeIdSize <= 0 ||
+      nodeIdSize < 1 ||
       nodeIdSize >= NODE_CTR_SIZE ||
       !Number.isInteger(nodeIdSize)
     ) {
-      throw new RangeError("`nodeIdSize` must range from 1 to 23");
-    } else if (
-      nodeId < 0 ||
-      nodeId >= 1 << nodeIdSize ||
-      !Number.isInteger(nodeId)
-    ) {
-      throw new RangeError("`nodeId` must fit in `nodeIdSize` bits");
-    }
-
-    this.counterSize = NODE_CTR_SIZE - nodeIdSize;
-    this.prevTimestamp = 0;
-    this.prevNodeCtr = nodeId << this.counterSize;
-  }
-
-  /**
-   * Creates a generator by parsing a node spec string that describes the node
-   * configuration.
-   *
-   * A node spec string consists of `nodeId` and `nodeIdSize` separated by a
-   * slash (e.g., `"42/8"`, `"12345/16"`).
-   *
-   * @throws Error if the node spec does not conform to the valid syntax or
-   * represents an invalid node configuration.
-   */
-  static parse(nodeSpec: string): Scru64Generator {
-    const m = nodeSpec.match(/^([0-9]{1,10})\/([0-9]{1,3})$/);
-    if (m === null) {
-      throw new SyntaxError(
-        "invalid `nodeSpec`; it looks like: `42/8`, `12345/16`",
+      throw new errType(
+        `\`nodeIdSize\` (${nodeIdSize}) must range from 1 to 23`,
       );
     }
-    return new Scru64Generator(parseInt(m[1], 10), parseInt(m[2], 10));
+    this.counterSize = NODE_CTR_SIZE - nodeIdSize;
+
+    if ("nodePrev" in nodeSpec) {
+      this.prevTimestamp = nodeSpec.nodePrev.timestamp;
+      this.prevNodeCtr = nodeSpec.nodePrev.nodeCtr;
+    } else if ("nodeId" in nodeSpec) {
+      this.prevTimestamp = 0;
+
+      const nodeId = nodeSpec.nodeId;
+      if (
+        nodeId < 0 ||
+        nodeId >= 1 << nodeIdSize ||
+        !Number.isInteger(nodeId)
+      ) {
+        throw new errType(
+          `\`nodeId\` (${nodeId}) must fit in \`nodeIdSize\` (${nodeIdSize}) bits`,
+        );
+      }
+      this.prevNodeCtr = nodeId << this.counterSize;
+    } else {
+      throw new Error("invalid `nodeSpec` argument");
+    }
   }
 
   /** Returns the `nodeId` of the generator. */
@@ -525,7 +561,7 @@ const getGlobalGenerator = (): Scru64Generator => {
         "scru64: could not read config from SCRU64_NODE_SPEC global var",
       );
     }
-    globalGenerator = Scru64Generator.parse(SCRU64_NODE_SPEC);
+    globalGenerator = new Scru64Generator(SCRU64_NODE_SPEC);
   }
   return globalGenerator;
 };

@@ -18,11 +18,11 @@ describe("Scru64Generator", function () {
 
   it("initializes with node ID and size pair and node spec string", function () {
     for (const [nodeId, nodeIdSize, nodeSpec] of NODE_SPECS) {
-      const x = new Scru64Generator(nodeId, nodeIdSize);
+      const x = new Scru64Generator({ nodeId, nodeIdSize });
       assert(x.getNodeId() === nodeId);
       assert(x.getNodeIdSize() === nodeIdSize);
 
-      const y = Scru64Generator.parse(nodeSpec);
+      const y = new Scru64Generator(nodeSpec);
       assert(y.getNodeId() === nodeId);
       assert(y.getNodeIdSize() === nodeIdSize);
     }
@@ -43,19 +43,18 @@ describe("Scru64Generator", function () {
       "-42/8",
       "42/-8",
       "ab/8",
-      "0x42/8",
       "1/2/3",
       "0/0",
       "0/24",
       "8/1",
       "1024/8",
-      "00000000001/8",
+      "0000000000001/8",
       "1/0016",
     ];
 
     for (const e of cases) {
       assertThrows(() => {
-        Scru64Generator.parse(e);
+        new Scru64Generator(e);
       });
     }
   });
@@ -75,7 +74,7 @@ describe("Scru64Generator", function () {
 
     for (const [nodeId, nodeIdSize, nodeSpec] of NODE_SPECS) {
       const counterSize = 24 - nodeIdSize;
-      const g = Scru64Generator.parse(nodeSpec);
+      const g = new Scru64Generator(nodeSpec);
 
       // happy path
       let ts = 1_577_836_800_000; // 2020-01-01
@@ -124,7 +123,7 @@ describe("Scru64Generator", function () {
 
     for (const [nodeId, nodeIdSize, nodeSpec] of NODE_SPECS) {
       const counterSize = 24 - nodeIdSize;
-      const g = Scru64Generator.parse(nodeSpec);
+      const g = new Scru64Generator(nodeSpec);
 
       // happy path
       let ts = 1_577_836_800_000; // 2020-01-01
@@ -167,7 +166,7 @@ describe("Scru64Generator", function () {
 
   it("embeds up-to-date timestamp", async function () {
     for (const [, , nodeSpec] of NODE_SPECS) {
-      const g = Scru64Generator.parse(nodeSpec);
+      const g = new Scru64Generator(nodeSpec);
       let ts_now = Math.trunc(Date.now() / 256);
       let x = g.generate();
       assert(x.timestamp - ts_now <= 1);
