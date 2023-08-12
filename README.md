@@ -22,11 +22,11 @@ import { scru64Sync, scru64StringSync } from "scru64";
 
 // generate a new identifier object
 const x = scru64Sync();
-console.log(String(x)); // e.g. "0u2r85hm2pt3"
+console.log(String(x)); // e.g., "0u2r85hm2pt3"
 console.log(BigInt(x.toHex())); // as a 64-bit unsigned integer
 
 // generate a textual representation directly
-console.log(scru64StringSync()); // e.g. "0u2r85hm2pt4"
+console.log(scru64StringSync()); // e.g., "0u2r85hm2pt4"
 ```
 
 See [SCRU64 Specification] for details.

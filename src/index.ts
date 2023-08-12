@@ -342,7 +342,7 @@ export class Scru64Generator {
     const m = nodeSpec.match(/^([0-9]{1,10})\/([0-9]{1,3})$/);
     if (m === null) {
       throw new SyntaxError(
-        "invalid `nodeSpec`; it looks like: `42/8`, `12345/16`"
+        "invalid `nodeSpec`; it looks like: `42/8`, `12345/16`",
       );
     }
     return new Scru64Generator(parseInt(m[1], 10), parseInt(m[2], 10));
@@ -465,7 +465,7 @@ export class Scru64Generator {
    */
   generateOrAbortCore(
     unixTsMs: number,
-    rollbackAllowance: number
+    rollbackAllowance: number,
   ): Scru64Id | undefined {
     const timestamp = Math.trunc(unixTsMs / 0x100);
     const allowance = Math.trunc(rollbackAllowance / 0x100);
@@ -504,7 +504,7 @@ const getGlobalGenerator = (): Scru64Generator => {
   if (globalGenerator === undefined) {
     if (typeof SCRU64_NODE_SPEC === "undefined") {
       throw new Error(
-        "scru64: could not read config from SCRU64_NODE_SPEC global var"
+        "scru64: could not read config from SCRU64_NODE_SPEC global var",
       );
     }
     globalGenerator = Scru64Generator.parse(SCRU64_NODE_SPEC);
