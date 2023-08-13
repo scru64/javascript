@@ -23,13 +23,7 @@ export declare class Scru64Id {
      * @throws RangeError if the length of the argument is not 8 or the argument
      * contains an integer out of the valid value range.
      */
-    static ofInner(bytes: Uint8Array): Scru64Id;
-    /**
-     * Returns the 12-digit canonical string representation.
-     *
-     * @category Conversion
-     */
-    toString(): string;
+    static ofInner(bytes: Readonly<Uint8Array>): Scru64Id;
     /**
      * Creates an object from a 12-digit string representation.
      *
@@ -46,13 +40,12 @@ export declare class Scru64Id {
      * @category Conversion
      */
     private static fromDigitValues;
-    /** Returns the `timestamp` field value. */
-    get timestamp(): number;
     /**
-     * Returns the `nodeId` and `counter` field values combined as a single
-     * integer.
+     * Returns the 12-digit canonical string representation.
+     *
+     * @category Conversion
      */
-    get nodeCtr(): number;
+    toString(): string;
     /**
      * Creates a value from the `timestamp` and the combined `nodeCtr` field
      * value.
@@ -61,13 +54,26 @@ export declare class Scru64Id {
      * @category Conversion
      */
     static fromParts(timestamp: number, nodeCtr: number): Scru64Id;
+    /** Returns the `timestamp` field value. */
+    get timestamp(): number;
     /**
-     * Returns the 64-bit unsigned integer representation as a 16-digit
-     * hexadecimal string prefixed with "0x".
+     * Returns the `nodeId` and `counter` field values combined as a single
+     * integer.
+     */
+    get nodeCtr(): number;
+    /**
+     * Creates an object from a 64-bit unsigned integer.
+     *
+     * @throws RangeError if the argument is out of the valid value range.
+     * @category Conversion
+     */
+    static fromBigInt(value: bigint): Scru64Id;
+    /**
+     * Returns the 64-bit unsigned integer representation.
      *
      * @category Conversion
      */
-    toHex(): string;
+    toBigInt(): bigint;
     /** Represents `this` in JSON as a 12-digit canonical string. */
     toJSON(): string;
     /**
@@ -102,48 +108,44 @@ export declare class Scru64Id {
  * | {@link generateOrResetCore} | Argument  | Resets generator    |
  *
  * All of these methods return monotonically increasing IDs unless a timestamp
- * provided is significantly (by default, approx. 10 seconds or more) smaller
- * than the one embedded in the immediately preceding ID. If such a significant
- * clock rollback is detected, (1) the `generate` (OrAbort) method aborts and
- * returns `undefined`; (2) the `OrReset` variants reset the generator and
- * return a new ID based on the given timestamp; and, (3) the `OrSleep` and
- * `OrAwait` methods sleep and wait for the next timestamp tick. The `Core`
- * functions offer low-level primitives.
+ * provided is significantly (by default, approx. 10 seconds) smaller than the
+ * one embedded in the immediately preceding ID. If such a significant clock
+ * rollback is detected, (1) the `generate` (OrAbort) method aborts and returns
+ * `undefined`; (2) the `OrReset` variants reset the generator and return a new
+ * ID based on the given timestamp; and, (3) the `OrSleep` and `OrAwait` methods
+ * sleep and wait for the next timestamp tick. The `Core` functions offer
+ * low-level primitives.
  */
 export declare class Scru64Generator {
     private prevTimestamp;
     private prevNodeCtr;
-    private counterSize;
+    private readonly counterSize;
+    private readonly counterMode;
     /**
-     * Creates a generator with a node configuration.
+     * Creates a new generator with the given node configuration and counter mode.
      *
-     * The `nodeId` must fit in `nodeIdSize` bits, where `nodeIdSize` ranges from
-     * 1 to 23, inclusive.
-     *
-     * @throws RangeError if the arguments represent an invalid node
-     * configuration.
+     * @throws `SyntaxError` if an invalid string `nodeSpec` is passed or
+     * `RangeError` if an invalid object `nodeSpec` is passed.
      */
-    constructor(nodeId: number, nodeIdSize: number);
-    /**
-     * Creates a generator by parsing a node spec string that describes the node
-     * configuration.
-     *
-     * A node spec string consists of `nodeId` and `nodeIdSize` separated by a
-     * slash (e.g., `"42/8"`, `"12345/16"`).
-     *
-     * @throws Error if the node spec does not conform to the valid syntax or
-     * represents an invalid node configuration.
-     */
-    static parse(nodeSpec: string): Scru64Generator;
+    constructor(nodeSpec: NodeSpec, counterMode?: CounterMode);
     /** Returns the `nodeId` of the generator. */
     getNodeId(): number;
+    /**
+     * Returns the `nodePrev` value if the generator is constructed with one or
+     * `undefined` otherwise.
+     */
+    getNodePrev(): Scru64Id | undefined;
     /** Returns the size in bits of the `nodeId` adopted by the generator. */
     getNodeIdSize(): number;
+    /**
+     * Returns the node configuration specifier describing the generator state.
+     */
+    getNodeSpec(): string;
     /**
      * Calculates the combined `nodeCtr` field value for the next `timestamp`
      * tick.
      */
-    private initNodeCtr;
+    private renewNodeCtr;
     /**
      * Generates a new SCRU64 ID object from the current `timestamp`, or returns
      * `undefined` upon significant timestamp rollback.
@@ -201,62 +203,161 @@ export declare class Scru64Generator {
     generateOrAbortCore(unixTsMs: number, rollbackAllowance: number): Scru64Id | undefined;
 }
 /**
+ * Represents a node configuration specifier used to build a
+ * {@link Scru64Generator}.
+ *
+ * A `NodeSpec` is usually expressed as a node spec string, which starts with a
+ * decimal `nodeId`, a hexadecimal `nodeId` prefixed with `"0x"`, or a 12-digit
+ * `nodePrev` SCRU64 ID value, followed by a slash and a decimal `nodeIdSize`
+ * value ranging from 1 to 23 (e.g., `"42/8"`, `"0xb00/12"`, `"0u2r85hm2pt3/16"`).
+ * The first and second forms create a fresh new generator with the given
+ * `nodeId`, while the third form constructs one that generates subsequent
+ * SCRU64 IDs to the `nodePrev`.
+ */
+export type NodeSpec = string | {
+    nodeId: number;
+    nodeIdSize: number;
+} | {
+    nodePrev: Scru64Id;
+    nodeIdSize: number;
+};
+/**
+ * An interface of objects to customize the initial counter value for each new
+ * `timestamp`.
+ *
+ * {@link Scru64Generator} calls `renew()` to obtain the initial counter value
+ * when the `timestamp` field has changed since the immediately preceding ID.
+ * Types implementing this interface may apply their respective logic to
+ * calculate the initial counter value.
+ */
+export type CounterMode = {
+    /**
+     * Returns the next initial counter value of `counterSize` bits.
+     *
+     * {@link Scru64Generator} passes the `counterSize` (from 1 to 23) and other
+     * context information that may be useful for counter renewal. The returned
+     * value must be within the range of `counterSize`-bit unsigned integer.
+     */
+    renew(counterSize: number, context: {
+        timestamp: number;
+        nodeId: number;
+    }): number;
+};
+/**
+ * The default "initialize a portion counter" strategy.
+ *
+ * With this strategy, the counter is reset to a random number for each new
+ * `timestamp` tick, but some specified leading bits are set to zero to reserve
+ * space as the counter overflow guard.
+ *
+ * Note that the random number generator employed is not cryptographically
+ * strong. This mode does not pay for security because a small random number is
+ * insecure anyway.
+ */
+export declare class DefaultCounterMode {
+    private readonly overflowGuardSize;
+    /** Creates a new instance with the size (in bits) of overflow guard bits. */
+    constructor(overflowGuardSize: number);
+    /** Returns the next initial counter value of `counterSize` bits. */
+    renew(counterSize: number, context: {}): number;
+}
+/**
+ * The gateway object that forwards supported method calls to the process-wide
+ * global generator.
+ */
+export declare class GlobalGenerator {
+    private constructor();
+    /**
+     * Initializes the global generator, if not initialized, with the node spec
+     * passed.
+     *
+     * This method tries to configure the global generator with the argument only
+     * when the global generator is not yet initialized. Otherwise, it preserves
+     * the existing configuration.
+     *
+     * @throws `SyntaxError` or `RangeError` according to the semantics of
+     * {@link Scru64Generator.constructor | new Scru64Generator(nodeSpec)} if the
+     * argument represents an invalid node spec.
+     * @returns `true` if this method configures the global generator or `false`
+     * if it preserves the existing configuration.
+     */
+    static initialize(nodeSpec: NodeSpec): boolean;
+    /** Calls {@link Scru64Generator.generate} of the global generator. */
+    static generate(): Scru64Id | undefined;
+    /** Calls {@link Scru64Generator.generateOrSleep} of the global generator. */
+    static generateOrSleep(): Scru64Id;
+    /** Calls {@link Scru64Generator.generateOrAwait} of the global generator. */
+    static generateOrAwait(): Promise<Scru64Id>;
+    /** Calls {@link Scru64Generator.getNodeId} of the global generator. */
+    static getNodeId(): number;
+    /** Calls {@link Scru64Generator.getNodePrev} of the global generator. */
+    static getNodePrev(): Scru64Id | undefined;
+    /** Calls {@link Scru64Generator.getNodeIdSize} of the global generator. */
+    static getNodeIdSize(): number;
+    /** Calls {@link Scru64Generator.getNodeSpec} of the global generator. */
+    static getNodeSpec(): string;
+}
+/**
  * Generates a new SCRU64 ID object using the global generator.
  *
- * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
- * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
- * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ * The {@link GlobalGenerator} reads the node configuration from the
+ * `SCRU64_NODE_SPEC` global variable by default, and it throws an error if it
+ * fails to read a well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`,
+ * `"0u2r85hm2pt3/16"`) when a generator method is first called. See also
+ * {@link NodeSpec} for the node spec string format.
  *
  * This function usually returns a value immediately, but if not possible, it
  * sleeps and waits for the next timestamp tick. It employs a blocking busy loop
  * to wait; use the non-blocking {@link scru64} where possible.
  *
- * @throws Error if the global generator is not properly configured through the
- * global variable.
+ * @throws Error if the global generator is not properly configured.
  */
 export declare const scru64Sync: () => Scru64Id;
 /**
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
  * representation using the global generator.
  *
- * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
- * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
- * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ * The {@link GlobalGenerator} reads the node configuration from the
+ * `SCRU64_NODE_SPEC` global variable by default, and it throws an error if it
+ * fails to read a well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`,
+ * `"0u2r85hm2pt3/16"`) when a generator method is first called. See also
+ * {@link NodeSpec} for the node spec string format.
  *
  * This function usually returns a value immediately, but if not possible, it
  * sleeps and waits for the next timestamp tick. It employs a blocking busy loop
  * to wait; use the non-blocking {@link scru64String} where possible.
  *
- * @throws Error if the global generator is not properly configured through the
- * global variable.
+ * @throws Error if the global generator is not properly configured.
  */
 export declare const scru64StringSync: () => string;
 /**
  * Generates a new SCRU64 ID object using the global generator.
  *
- * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
- * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
- * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ * The {@link GlobalGenerator} reads the node configuration from the
+ * `SCRU64_NODE_SPEC` global variable by default, and it throws an error if it
+ * fails to read a well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`,
+ * `"0u2r85hm2pt3/16"`) when a generator method is first called. See also
+ * {@link NodeSpec} for the node spec string format.
  *
  * This function usually returns a value immediately, but if not possible, it
  * sleeps and waits for the next timestamp tick.
  *
- * @throws Error if the global generator is not properly configured through the
- * global variable.
+ * @throws Error if the global generator is not properly configured.
  */
 export declare const scru64: () => Promise<Scru64Id>;
 /**
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
  * representation using the global generator.
  *
- * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
- * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
- * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ * The {@link GlobalGenerator} reads the node configuration from the
+ * `SCRU64_NODE_SPEC` global variable by default, and it throws an error if it
+ * fails to read a well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`,
+ * `"0u2r85hm2pt3/16"`) when a generator method is first called. See also
+ * {@link NodeSpec} for the node spec string format.
  *
  * This function usually returns a value immediately, but if not possible, it
  * sleeps and waits for the next timestamp tick.
  *
- * @throws Error if the global generator is not properly configured through the
- * global variable.
+ * @throws Error if the global generator is not properly configured.
  */
 export declare const scru64String: () => Promise<string>;

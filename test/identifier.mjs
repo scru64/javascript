@@ -3,9 +3,9 @@ import { assert, assertThrows } from "./assert.mjs";
 
 describe("Scru64Id", function () {
   it("supports equality comparison", function () {
-    const e = TEST_CASES[TEST_CASES.length - 1];
+    const e = EXAMPLE_IDS[EXAMPLE_IDS.length - 1];
     let prev = Scru64Id.fromParts(e.timestamp, e.nodeCtr);
-    for (const e of TEST_CASES) {
+    for (const e of EXAMPLE_IDS) {
       const curr = Scru64Id.fromParts(e.timestamp, e.nodeCtr);
       const twin = Scru64Id.fromParts(e.timestamp, e.nodeCtr);
 
@@ -14,9 +14,9 @@ describe("Scru64Id", function () {
       assert(twin.equals(curr));
       assert(
         curr.bytes.length === twin.bytes.length &&
-          curr.bytes.every((elem, i) => elem === twin.bytes[i])
+          curr.bytes.every((elem, i) => elem === twin.bytes[i]),
       );
-      assert(curr.toHex() === twin.toHex());
+      assert(curr.toBigInt() === twin.toBigInt());
       assert(String(curr) === String(twin));
       assert(JSON.stringify(curr) === JSON.stringify(twin));
       assert(curr.timestamp === twin.timestamp);
@@ -27,13 +27,13 @@ describe("Scru64Id", function () {
       assert(!curr.equals(prev));
       assert(
         curr.bytes.length === prev.bytes.length &&
-          !curr.bytes.every((elem, i) => elem === prev.bytes[i])
+          !curr.bytes.every((elem, i) => elem === prev.bytes[i]),
       );
-      assert(curr.toHex() !== prev.toHex());
+      assert(curr.toBigInt() !== prev.toBigInt());
       assert(String(curr) !== String(prev));
       assert(JSON.stringify(curr) !== JSON.stringify(prev));
       assert(
-        curr.timestamp !== prev.timestamp || curr.nodeCtr !== prev.nodeCtr
+        curr.timestamp !== prev.timestamp || curr.nodeCtr !== prev.nodeCtr,
       );
 
       prev = curr;
@@ -41,7 +41,7 @@ describe("Scru64Id", function () {
   });
 
   it("supports ordering comparison", function () {
-    const cases = TEST_CASES.slice();
+    const cases = EXAMPLE_IDS.slice();
     cases.sort((a, b) => Number(a.num - b.num));
 
     const e = cases.shift();
@@ -57,14 +57,14 @@ describe("Scru64Id", function () {
   });
 
   it("converts to various types", function () {
-    for (const e of TEST_CASES) {
+    for (const e of EXAMPLE_IDS) {
       const x = Scru64Id.fromParts(e.timestamp, e.nodeCtr);
 
       assert(
         x.bytes.length === e.bytes.length &&
-          x.bytes.every((elem, i) => elem === e.bytes[i])
+          x.bytes.every((elem, i) => elem === e.bytes[i]),
       );
-      assert(BigInt(x.toHex()) === e.num);
+      assert(x.toBigInt() === e.num);
       assert(String(x) === e.text);
       assert(x.timestamp === e.timestamp);
       assert(x.nodeCtr === e.nodeCtr);
@@ -72,10 +72,11 @@ describe("Scru64Id", function () {
   });
 
   it("converts from various types", function () {
-    for (const e of TEST_CASES) {
+    for (const e of EXAMPLE_IDS) {
       const x = Scru64Id.fromParts(e.timestamp, e.nodeCtr);
 
       assert(Scru64Id.ofInner(e.bytes).equals(x));
+      assert(Scru64Id.fromBigInt(e.num).equals(x));
       assert(Scru64Id.fromString(e.text).equals(x));
       assert(Scru64Id.fromString(e.text.toUpperCase()).equals(x));
     }
@@ -119,7 +120,7 @@ describe("Scru64Id", function () {
   });
 });
 
-const TEST_CASES = [
+const EXAMPLE_IDS = [
   { text: "000000000000", num: 0x0000000000000000n, timestamp: 0, nodeCtr: 0 },
   {
     text: "00000009zldr",
@@ -261,7 +262,7 @@ const TEST_CASES = [
   },
 ];
 
-for (const e of TEST_CASES) {
+for (const e of EXAMPLE_IDS) {
   e.bytes = new Uint8Array(8);
   new DataView(e.bytes.buffer).setBigUint64(0, e.num);
 }
