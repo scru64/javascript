@@ -58,35 +58,6 @@ export class Scru64Id {
         return new Scru64Id(bytes);
     }
     /**
-     * Returns the 12-digit canonical string representation.
-     *
-     * @category Conversion
-     */
-    toString() {
-        const dst = new Uint8Array(12);
-        let minIndex = 99; // any number greater than size of output array
-        for (let i = -2; i < 8; i += 5) {
-            // implement Base36 using 40-bit words
-            let carry = this.subUint(i < 0 ? 0 : i, i + 5);
-            // iterate over output array from right to left while carry != 0 but at
-            // least up to place already filled
-            let j = dst.length - 1;
-            for (; carry > 0 || j > minIndex; j--) {
-                console.assert(j >= 0);
-                carry += dst[j] * 1099511627776;
-                const quo = Math.trunc(carry / 36);
-                dst[j] = carry - quo * 36; // remainder
-                carry = quo;
-            }
-            minIndex = j;
-        }
-        let text = "";
-        for (const d of dst) {
-            text += DIGITS.charAt(d);
-        }
-        return text;
-    }
-    /**
      * Creates an object from a 12-digit string representation.
      *
      * @throws SyntaxError if the argument is not a valid string representation.
@@ -141,16 +112,34 @@ export class Scru64Id {
         }
         return new Scru64Id(dst);
     }
-    /** Returns the `timestamp` field value. */
-    get timestamp() {
-        return this.subUint(0, 5);
-    }
     /**
-     * Returns the `nodeId` and `counter` field values combined as a single
-     * integer.
+     * Returns the 12-digit canonical string representation.
+     *
+     * @category Conversion
      */
-    get nodeCtr() {
-        return this.subUint(5, 8);
+    toString() {
+        const dst = new Uint8Array(12);
+        let minIndex = 99; // any number greater than size of output array
+        for (let i = -2; i < 8; i += 5) {
+            // implement Base36 using 40-bit words
+            let carry = this.subUint(i < 0 ? 0 : i, i + 5);
+            // iterate over output array from right to left while carry != 0 but at
+            // least up to place already filled
+            let j = dst.length - 1;
+            for (; carry > 0 || j > minIndex; j--) {
+                console.assert(j >= 0);
+                carry += dst[j] * 1099511627776;
+                const quo = Math.trunc(carry / 36);
+                dst[j] = carry - quo * 36; // remainder
+                carry = quo;
+            }
+            minIndex = j;
+        }
+        let text = "";
+        for (const d of dst) {
+            text += DIGITS.charAt(d);
+        }
+        return text;
     }
     /**
      * Creates a value from the `timestamp` and the combined `nodeCtr` field
@@ -179,22 +168,46 @@ export class Scru64Id {
         bytes[5] = nodeCtr >>> 16;
         bytes[6] = nodeCtr >>> 8;
         bytes[7] = nodeCtr;
-        return new Scru64Id(bytes);
+        // upper bound check is necessary when `timestamp` is at max
+        return timestamp === MAX_TIMESTAMP
+            ? Scru64Id.ofInner(bytes)
+            : new Scru64Id(bytes);
+    }
+    /** Returns the `timestamp` field value. */
+    get timestamp() {
+        return this.subUint(0, 5);
     }
     /**
-     * Returns the 64-bit unsigned integer representation as a 16-digit
-     * hexadecimal string prefixed with "0x".
+     * Returns the `nodeId` and `counter` field values combined as a single
+     * integer.
+     */
+    get nodeCtr() {
+        return this.subUint(5, 8);
+    }
+    /**
+     * Creates an object from a 64-bit unsigned integer.
+     *
+     * @throws RangeError if the argument is out of the valid value range.
+     * @category Conversion
+     */
+    static fromBigInt(value) {
+        if (value < 0 || value >> BigInt(64) > 0) {
+            throw new RangeError("out of 64-bit value range");
+        }
+        const bytes = new Uint8Array(8);
+        for (let i = 7; i >= 0; i--) {
+            bytes[i] = Number(value & BigInt(0xff));
+            value >>= BigInt(8);
+        }
+        return Scru64Id.ofInner(bytes);
+    }
+    /**
+     * Returns the 64-bit unsigned integer representation.
      *
      * @category Conversion
      */
-    toHex() {
-        const digits = "0123456789abcdef";
-        let text = "0x";
-        for (const e of this.bytes) {
-            text += digits.charAt(e >>> 4);
-            text += digits.charAt(e & 0xf);
-        }
-        return text;
+    toBigInt() {
+        return this.bytes.reduce((acc, curr) => (acc << BigInt(8)) | BigInt(curr), BigInt(0));
     }
     /** Represents `this` in JSON as a 12-digit canonical string. */
     toJSON() {
@@ -250,74 +263,116 @@ export class Scru64Id {
  * | {@link generateOrResetCore} | Argument  | Resets generator    |
  *
  * All of these methods return monotonically increasing IDs unless a timestamp
- * provided is significantly (by default, approx. 10 seconds or more) smaller
- * than the one embedded in the immediately preceding ID. If such a significant
- * clock rollback is detected, (1) the `generate` (OrAbort) method aborts and
- * returns `undefined`; (2) the `OrReset` variants reset the generator and
- * return a new ID based on the given timestamp; and, (3) the `OrSleep` and
- * `OrAwait` methods sleep and wait for the next timestamp tick. The `Core`
- * functions offer low-level primitives.
+ * provided is significantly (by default, approx. 10 seconds) smaller than the
+ * one embedded in the immediately preceding ID. If such a significant clock
+ * rollback is detected, (1) the `generate` (OrAbort) method aborts and returns
+ * `undefined`; (2) the `OrReset` variants reset the generator and return a new
+ * ID based on the given timestamp; and, (3) the `OrSleep` and `OrAwait` methods
+ * sleep and wait for the next timestamp tick. The `Core` functions offer
+ * low-level primitives.
  */
 export class Scru64Generator {
     /**
-     * Creates a generator with a node configuration.
+     * Creates a new generator with the given node configuration and counter mode.
      *
-     * The `nodeId` must fit in `nodeIdSize` bits, where `nodeIdSize` ranges from
-     * 1 to 23, inclusive.
-     *
-     * @throws RangeError if the arguments represent an invalid node
-     * configuration.
+     * @throws `SyntaxError` if an invalid string `nodeSpec` is passed or
+     * `RangeError` if an invalid object `nodeSpec` is passed.
      */
-    constructor(nodeId, nodeIdSize) {
-        if (nodeIdSize <= 0 ||
+    constructor(nodeSpec, counterMode) {
+        let errType = RangeError;
+        if (typeof nodeSpec === "string") {
+            // convert string `nodeSpec` to object
+            errType = SyntaxError;
+            const m = nodeSpec.match(/^(?:([0-9a-z]{12})|([0-9]{1,8}|0x[0-9a-f]{1,6}))\/([0-9]{1,3})$/i);
+            if (m === null) {
+                throw new errType('could not parse string as node spec (expected: e.g., "42/8", "0xb00/12", "0u2r85hm2pt3/16")');
+            }
+            else if (typeof m[1] === "string") {
+                nodeSpec = {
+                    nodePrev: Scru64Id.fromString(m[1]),
+                    nodeIdSize: parseInt(m[3], 10),
+                };
+            }
+            else if (typeof m[2] === "string") {
+                nodeSpec = {
+                    nodeId: parseInt(m[2]),
+                    nodeIdSize: parseInt(m[3], 10),
+                };
+            }
+            else {
+                throw new Error("unreachable");
+            }
+        }
+        // process object `nodeSpec`
+        const nodeIdSize = nodeSpec.nodeIdSize;
+        if (nodeIdSize < 1 ||
             nodeIdSize >= NODE_CTR_SIZE ||
             !Number.isInteger(nodeIdSize)) {
-            throw new RangeError("`nodeIdSize` must range from 1 to 23");
-        }
-        else if (nodeId < 0 ||
-            nodeId >= 1 << nodeIdSize ||
-            !Number.isInteger(nodeId)) {
-            throw new RangeError("`nodeId` must fit in `nodeIdSize` bits");
+            throw new errType(`\`nodeIdSize\` (${nodeIdSize}) must range from 1 to 23`);
         }
         this.counterSize = NODE_CTR_SIZE - nodeIdSize;
-        this.prevTimestamp = 0;
-        this.prevNodeCtr = nodeId << this.counterSize;
-    }
-    /**
-     * Creates a generator by parsing a node spec string that describes the node
-     * configuration.
-     *
-     * A node spec string consists of `nodeId` and `nodeIdSize` separated by a
-     * slash (e.g., `"42/8"`, `"12345/16"`).
-     *
-     * @throws Error if the node spec does not conform to the valid syntax or
-     * represents an invalid node configuration.
-     */
-    static parse(nodeSpec) {
-        const m = nodeSpec.match(/^([0-9]{1,10})\/([0-9]{1,3})$/);
-        if (m === null) {
-            throw new SyntaxError("invalid `nodeSpec`; it looks like: `42/8`, `12345/16`");
+        if ("nodePrev" in nodeSpec && typeof nodeSpec.nodePrev === "object") {
+            this.prevTimestamp = nodeSpec.nodePrev.timestamp;
+            this.prevNodeCtr = nodeSpec.nodePrev.nodeCtr;
         }
-        return new Scru64Generator(parseInt(m[1], 10), parseInt(m[2], 10));
+        else if ("nodeId" in nodeSpec && typeof nodeSpec.nodeId === "number") {
+            this.prevTimestamp = 0;
+            const nodeId = nodeSpec.nodeId;
+            if (nodeId < 0 ||
+                nodeId >= 1 << nodeIdSize ||
+                !Number.isInteger(nodeId)) {
+                throw new errType(`\`nodeId\` (${nodeId}) must fit in \`nodeIdSize\` (${nodeIdSize}) bits`);
+            }
+            this.prevNodeCtr = nodeId << this.counterSize;
+        }
+        else {
+            throw new errType("invalid `nodeSpec` argument");
+        }
+        // reserve one overflow guard bit if `counterSize` is four or less
+        this.counterMode =
+            counterMode !== null && counterMode !== void 0 ? counterMode : new DefaultCounterMode(this.counterSize <= 4 ? 1 : 0);
     }
     /** Returns the `nodeId` of the generator. */
     getNodeId() {
         return this.prevNodeCtr >>> this.counterSize;
+    }
+    /**
+     * Returns the `nodePrev` value if the generator is constructed with one or
+     * `undefined` otherwise.
+     */
+    getNodePrev() {
+        if (this.prevTimestamp > 0) {
+            return Scru64Id.fromParts(this.prevTimestamp, this.prevNodeCtr);
+        }
+        else {
+            return undefined;
+        }
     }
     /** Returns the size in bits of the `nodeId` adopted by the generator. */
     getNodeIdSize() {
         return NODE_CTR_SIZE - this.counterSize;
     }
     /**
+     * Returns the node configuration specifier describing the generator state.
+     */
+    getNodeSpec() {
+        const nodePrev = this.getNodePrev();
+        return nodePrev !== undefined
+            ? `${nodePrev.toString()}/${this.getNodeIdSize()}`
+            : `${this.getNodeId()}/${this.getNodeIdSize()}`;
+    }
+    /**
      * Calculates the combined `nodeCtr` field value for the next `timestamp`
      * tick.
      */
-    initNodeCtr() {
-        // initialize counter at `counter_size - 1`-bit random number
-        const OVERFLOW_GUARD_SIZE = 1;
-        const limit = 1 << (this.counterSize - OVERFLOW_GUARD_SIZE);
-        const counter = Math.trunc(Math.random() * limit);
-        return (this.getNodeId() << this.counterSize) | counter;
+    renewNodeCtr(timestamp) {
+        const nodeId = this.getNodeId();
+        const context = { timestamp, nodeId };
+        const counter = this.counterMode.renew(this.counterSize, context);
+        if (counter >= 1 << this.counterSize) {
+            throw new Error("illegal `CounterMode` implementation");
+        }
+        return (nodeId << this.counterSize) | counter;
     }
     /**
      * Generates a new SCRU64 ID object from the current `timestamp`, or returns
@@ -394,7 +449,7 @@ export class Scru64Generator {
         else {
             // reset state and resume
             this.prevTimestamp = Math.trunc(unixTsMs / 0x100);
-            this.prevNodeCtr = this.initNodeCtr();
+            this.prevNodeCtr = this.renewNodeCtr(this.prevTimestamp);
             return Scru64Id.fromParts(this.prevTimestamp, this.prevNodeCtr);
         }
     }
@@ -420,9 +475,9 @@ export class Scru64Generator {
         }
         if (timestamp > this.prevTimestamp) {
             this.prevTimestamp = timestamp;
-            this.prevNodeCtr = this.initNodeCtr();
+            this.prevNodeCtr = this.renewNodeCtr(this.prevTimestamp);
         }
-        else if (timestamp + allowance > this.prevTimestamp) {
+        else if (timestamp + allowance >= this.prevTimestamp) {
             // go on with previous timestamp if new one is not much smaller
             const counterMask = (1 << this.counterSize) - 1;
             if ((this.prevNodeCtr & counterMask) < counterMask) {
@@ -431,7 +486,7 @@ export class Scru64Generator {
             else {
                 // increment timestamp at counter overflow
                 this.prevTimestamp++;
-                this.prevNodeCtr = this.initNodeCtr();
+                this.prevNodeCtr = this.renewNodeCtr(this.prevTimestamp);
             }
         }
         else {
@@ -441,73 +496,160 @@ export class Scru64Generator {
         return Scru64Id.fromParts(this.prevTimestamp, this.prevNodeCtr);
     }
 }
-let globalGenerator = undefined;
+/**
+ * The default "initialize a portion counter" strategy.
+ *
+ * With this strategy, the counter is reset to a random number for each new
+ * `timestamp` tick, but some specified leading bits are set to zero to reserve
+ * space as the counter overflow guard.
+ *
+ * Note that the random number generator employed is not cryptographically
+ * strong. This mode does not pay for security because a small random number is
+ * insecure anyway.
+ */
+export class DefaultCounterMode {
+    /** Creates a new instance with the size (in bits) of overflow guard bits. */
+    constructor(overflowGuardSize) {
+        this.overflowGuardSize = overflowGuardSize;
+        if (overflowGuardSize < 0 || !Number.isInteger(overflowGuardSize)) {
+            throw new RangeError("`overflowGuardSize` must be an unsigned integer");
+        }
+    }
+    /** Returns the next initial counter value of `counterSize` bits. */
+    renew(counterSize, context) {
+        const k = Math.max(0, counterSize - this.overflowGuardSize);
+        return Math.trunc(Math.random() * (1 << k));
+    }
+}
+let globalGen = undefined;
 const getGlobalGenerator = () => {
-    if (globalGenerator === undefined) {
+    if (globalGen === undefined) {
         if (typeof SCRU64_NODE_SPEC === "undefined") {
             throw new Error("scru64: could not read config from SCRU64_NODE_SPEC global var");
         }
-        globalGenerator = Scru64Generator.parse(SCRU64_NODE_SPEC);
+        globalGen = new Scru64Generator(SCRU64_NODE_SPEC);
     }
-    return globalGenerator;
+    return globalGen;
 };
+/**
+ * The gateway object that forwards supported method calls to the process-wide
+ * global generator.
+ */
+export class GlobalGenerator {
+    constructor() { }
+    /**
+     * Initializes the global generator, if not initialized, with the node spec
+     * passed.
+     *
+     * This method tries to configure the global generator with the argument only
+     * when the global generator is not yet initialized. Otherwise, it preserves
+     * the existing configuration.
+     *
+     * @throws `SyntaxError` or `RangeError` according to the semantics of
+     * {@link Scru64Generator.constructor | new Scru64Generator(nodeSpec)} if the
+     * argument represents an invalid node spec.
+     * @returns `true` if this method configures the global generator or `false`
+     * if it preserves the existing configuration.
+     */
+    static initialize(nodeSpec) {
+        if (globalGen === undefined) {
+            globalGen = new Scru64Generator(nodeSpec);
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+    /** Calls {@link Scru64Generator.generate} of the global generator. */
+    static generate() {
+        return getGlobalGenerator().generate();
+    }
+    /** Calls {@link Scru64Generator.generateOrSleep} of the global generator. */
+    static generateOrSleep() {
+        return getGlobalGenerator().generateOrSleep();
+    }
+    /** Calls {@link Scru64Generator.generateOrAwait} of the global generator. */
+    static async generateOrAwait() {
+        return getGlobalGenerator().generateOrAwait();
+    }
+    /** Calls {@link Scru64Generator.getNodeId} of the global generator. */
+    static getNodeId() {
+        return getGlobalGenerator().getNodeId();
+    }
+    /** Calls {@link Scru64Generator.getNodePrev} of the global generator. */
+    static getNodePrev() {
+        return getGlobalGenerator().getNodePrev();
+    }
+    /** Calls {@link Scru64Generator.getNodeIdSize} of the global generator. */
+    static getNodeIdSize() {
+        return getGlobalGenerator().getNodeIdSize();
+    }
+    /** Calls {@link Scru64Generator.getNodeSpec} of the global generator. */
+    static getNodeSpec() {
+        return getGlobalGenerator().getNodeSpec();
+    }
+}
 /**
  * Generates a new SCRU64 ID object using the global generator.
  *
- * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
- * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
- * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ * The {@link GlobalGenerator} reads the node configuration from the
+ * `SCRU64_NODE_SPEC` global variable by default, and it throws an error if it
+ * fails to read a well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`,
+ * `"0u2r85hm2pt3/16"`) when a generator method is first called. See also
+ * {@link NodeSpec} for the node spec string format.
  *
  * This function usually returns a value immediately, but if not possible, it
  * sleeps and waits for the next timestamp tick. It employs a blocking busy loop
  * to wait; use the non-blocking {@link scru64} where possible.
  *
- * @throws Error if the global generator is not properly configured through the
- * global variable.
+ * @throws Error if the global generator is not properly configured.
  */
-export const scru64Sync = () => getGlobalGenerator().generateOrSleep();
+export const scru64Sync = () => GlobalGenerator.generateOrSleep();
 /**
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
  * representation using the global generator.
  *
- * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
- * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
- * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ * The {@link GlobalGenerator} reads the node configuration from the
+ * `SCRU64_NODE_SPEC` global variable by default, and it throws an error if it
+ * fails to read a well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`,
+ * `"0u2r85hm2pt3/16"`) when a generator method is first called. See also
+ * {@link NodeSpec} for the node spec string format.
  *
  * This function usually returns a value immediately, but if not possible, it
  * sleeps and waits for the next timestamp tick. It employs a blocking busy loop
  * to wait; use the non-blocking {@link scru64String} where possible.
  *
- * @throws Error if the global generator is not properly configured through the
- * global variable.
+ * @throws Error if the global generator is not properly configured.
  */
 export const scru64StringSync = () => scru64Sync().toString();
 /**
  * Generates a new SCRU64 ID object using the global generator.
  *
- * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
- * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
- * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ * The {@link GlobalGenerator} reads the node configuration from the
+ * `SCRU64_NODE_SPEC` global variable by default, and it throws an error if it
+ * fails to read a well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`,
+ * `"0u2r85hm2pt3/16"`) when a generator method is first called. See also
+ * {@link NodeSpec} for the node spec string format.
  *
  * This function usually returns a value immediately, but if not possible, it
  * sleeps and waits for the next timestamp tick.
  *
- * @throws Error if the global generator is not properly configured through the
- * global variable.
+ * @throws Error if the global generator is not properly configured.
  */
-export const scru64 = async () => getGlobalGenerator().generateOrAwait();
+export const scru64 = async () => GlobalGenerator.generateOrAwait();
 /**
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
  * representation using the global generator.
  *
- * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
- * global variable. A node spec string consists of `nodeId` and `nodeIdSize`
- * separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+ * The {@link GlobalGenerator} reads the node configuration from the
+ * `SCRU64_NODE_SPEC` global variable by default, and it throws an error if it
+ * fails to read a well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`,
+ * `"0u2r85hm2pt3/16"`) when a generator method is first called. See also
+ * {@link NodeSpec} for the node spec string format.
  *
  * This function usually returns a value immediately, but if not possible, it
  * sleeps and waits for the next timestamp tick.
  *
- * @throws Error if the global generator is not properly configured through the
- * global variable.
+ * @throws Error if the global generator is not properly configured.
  */
 export const scru64String = async () => (await scru64()).toString();
