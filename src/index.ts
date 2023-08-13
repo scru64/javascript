@@ -325,9 +325,6 @@ export class Scru64Generator {
    * `RangeError` if an invalid object `nodeSpec` is passed.
    */
   constructor(nodeSpec: NodeSpec, counterMode?: CounterMode) {
-    this.prevTimestamp = 0;
-    this.prevNodeCtr = 0;
-
     let errType = RangeError;
     if (typeof nodeSpec === "string") {
       // convert string `nodeSpec` to object
@@ -339,12 +336,12 @@ export class Scru64Generator {
         throw new errType(
           'could not parse string as node spec (expected: e.g., "42/8", "0xb00/12", "0u2r85hm2pt3/16")',
         );
-      } else if (m[1]) {
+      } else if (typeof m[1] === "string") {
         nodeSpec = {
           nodePrev: Scru64Id.fromString(m[1]),
           nodeIdSize: parseInt(m[3], 10),
         };
-      } else if (m[2]) {
+      } else if (typeof m[2] === "string") {
         nodeSpec = {
           nodeId: parseInt(m[2]),
           nodeIdSize: parseInt(m[3], 10),
@@ -367,10 +364,10 @@ export class Scru64Generator {
     }
     this.counterSize = NODE_CTR_SIZE - nodeIdSize;
 
-    if ("nodePrev" in nodeSpec) {
+    if ("nodePrev" in nodeSpec && typeof nodeSpec.nodePrev === "object") {
       this.prevTimestamp = nodeSpec.nodePrev.timestamp;
       this.prevNodeCtr = nodeSpec.nodePrev.nodeCtr;
-    } else if ("nodeId" in nodeSpec) {
+    } else if ("nodeId" in nodeSpec && typeof nodeSpec.nodeId === "number") {
       this.prevTimestamp = 0;
 
       const nodeId = nodeSpec.nodeId;
@@ -385,7 +382,7 @@ export class Scru64Generator {
       }
       this.prevNodeCtr = nodeId << this.counterSize;
     } else {
-      throw new Error("invalid `nodeSpec` argument");
+      throw new errType("invalid `nodeSpec` argument");
     }
 
     // reserve one overflow guard bit if `counterSize` is four or less
