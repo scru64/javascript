@@ -1,16 +1,41 @@
-import { Scru64Generator } from "../dist/index.js";
+import { Scru64Generator, Scru64Id } from "../dist/index.js";
 import { assert, assertThrows } from "./assert.mjs";
 
 describe("Scru64Generator", function () {
   it("initializes with node ID and size pair and node spec string", function () {
-    for (const { nodeId, nodeIdSize, nodeSpec } of EXAMPLE_NODE_SPECS) {
-      const x = new Scru64Generator({ nodeId, nodeIdSize });
-      assert(x.getNodeId() === nodeId);
-      assert(x.getNodeIdSize() === nodeIdSize);
+    for (const {
+      nodeSpec,
+      canonical,
+      specType,
+      nodeId,
+      nodeIdSize,
+      nodePrevBytes,
+    } of EXAMPLE_NODE_SPECS) {
+      const nodePrev = Scru64Id.ofInner(nodePrevBytes);
 
-      const y = new Scru64Generator(nodeSpec);
-      assert(y.getNodeId() === nodeId);
-      assert(y.getNodeIdSize() === nodeIdSize);
+      const withNodePrev = new Scru64Generator({ nodePrev, nodeIdSize });
+      assert(withNodePrev.getNodeId() === nodeId);
+      assert(withNodePrev.getNodeIdSize() === nodeIdSize);
+      if (withNodePrev.getNodePrev() !== undefined) {
+        assert(withNodePrev.getNodePrev().equals(nodePrev));
+      }
+      assert(withNodePrev.getNodeSpec() === canonical);
+
+      const withNodeId = new Scru64Generator({ nodeId, nodeIdSize });
+      assert(withNodeId.getNodeId() === nodeId);
+      assert(withNodeId.getNodeIdSize() === nodeIdSize);
+      assert(withNodeId.getNodePrev() === undefined);
+      if (specType.endsWith("NodeId")) {
+        assert(withNodePrev.getNodeSpec() === canonical);
+      }
+
+      const parsed = new Scru64Generator(nodeSpec);
+      assert(parsed.getNodeId() === nodeId);
+      assert(parsed.getNodeIdSize() === nodeIdSize);
+      if (parsed.getNodePrev() !== undefined) {
+        assert(parsed.getNodePrev().equals(nodePrev));
+      }
+      assert(withNodePrev.getNodeSpec() === canonical);
     }
   });
 
@@ -179,7 +204,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "decNodeId",
     nodeId: 0,
     nodeIdSize: 1,
-    nodePrev: "0000000000000000",
+    nodePrev: 0x0000000000000000n,
   },
   {
     nodeSpec: "1/1",
@@ -187,7 +212,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "decNodeId",
     nodeId: 1,
     nodeIdSize: 1,
-    nodePrev: "0000000000800000",
+    nodePrev: 0x0000000000800000n,
   },
   {
     nodeSpec: "0/8",
@@ -195,7 +220,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "decNodeId",
     nodeId: 0,
     nodeIdSize: 8,
-    nodePrev: "0000000000000000",
+    nodePrev: 0x0000000000000000n,
   },
   {
     nodeSpec: "42/8",
@@ -203,7 +228,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "decNodeId",
     nodeId: 42,
     nodeIdSize: 8,
-    nodePrev: "00000000002a0000",
+    nodePrev: 0x00000000002a0000n,
   },
   {
     nodeSpec: "255/8",
@@ -211,7 +236,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "decNodeId",
     nodeId: 255,
     nodeIdSize: 8,
-    nodePrev: "0000000000ff0000",
+    nodePrev: 0x0000000000ff0000n,
   },
   {
     nodeSpec: "0/16",
@@ -219,7 +244,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "decNodeId",
     nodeId: 0,
     nodeIdSize: 16,
-    nodePrev: "0000000000000000",
+    nodePrev: 0x0000000000000000n,
   },
   {
     nodeSpec: "334/16",
@@ -227,7 +252,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "decNodeId",
     nodeId: 334,
     nodeIdSize: 16,
-    nodePrev: "0000000000014e00",
+    nodePrev: 0x0000000000014e00n,
   },
   {
     nodeSpec: "65535/16",
@@ -235,7 +260,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "decNodeId",
     nodeId: 65535,
     nodeIdSize: 16,
-    nodePrev: "0000000000ffff00",
+    nodePrev: 0x0000000000ffff00n,
   },
   {
     nodeSpec: "0/23",
@@ -243,7 +268,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "decNodeId",
     nodeId: 0,
     nodeIdSize: 23,
-    nodePrev: "0000000000000000",
+    nodePrev: 0x0000000000000000n,
   },
   {
     nodeSpec: "123456/23",
@@ -251,7 +276,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "decNodeId",
     nodeId: 123456,
     nodeIdSize: 23,
-    nodePrev: "000000000003c480",
+    nodePrev: 0x000000000003c480n,
   },
   {
     nodeSpec: "8388607/23",
@@ -259,7 +284,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "decNodeId",
     nodeId: 8388607,
     nodeIdSize: 23,
-    nodePrev: "0000000000fffffe",
+    nodePrev: 0x0000000000fffffen,
   },
   {
     nodeSpec: "0x0/1",
@@ -267,7 +292,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "hexNodeId",
     nodeId: 0,
     nodeIdSize: 1,
-    nodePrev: "0000000000000000",
+    nodePrev: 0x0000000000000000n,
   },
   {
     nodeSpec: "0x1/1",
@@ -275,7 +300,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "hexNodeId",
     nodeId: 1,
     nodeIdSize: 1,
-    nodePrev: "0000000000800000",
+    nodePrev: 0x0000000000800000n,
   },
   {
     nodeSpec: "0xb/8",
@@ -283,7 +308,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "hexNodeId",
     nodeId: 11,
     nodeIdSize: 8,
-    nodePrev: "00000000000b0000",
+    nodePrev: 0x00000000000b0000n,
   },
   {
     nodeSpec: "0x8f/8",
@@ -291,7 +316,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "hexNodeId",
     nodeId: 143,
     nodeIdSize: 8,
-    nodePrev: "00000000008f0000",
+    nodePrev: 0x00000000008f0000n,
   },
   {
     nodeSpec: "0xd7/8",
@@ -299,7 +324,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "hexNodeId",
     nodeId: 215,
     nodeIdSize: 8,
-    nodePrev: "0000000000d70000",
+    nodePrev: 0x0000000000d70000n,
   },
   {
     nodeSpec: "0xbaf/16",
@@ -307,7 +332,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "hexNodeId",
     nodeId: 2991,
     nodeIdSize: 16,
-    nodePrev: "00000000000baf00",
+    nodePrev: 0x00000000000baf00n,
   },
   {
     nodeSpec: "0x10fa/16",
@@ -315,7 +340,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "hexNodeId",
     nodeId: 4346,
     nodeIdSize: 16,
-    nodePrev: "000000000010fa00",
+    nodePrev: 0x000000000010fa00n,
   },
   {
     nodeSpec: "0xcc83/16",
@@ -323,7 +348,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "hexNodeId",
     nodeId: 52355,
     nodeIdSize: 16,
-    nodePrev: "0000000000cc8300",
+    nodePrev: 0x0000000000cc8300n,
   },
   {
     nodeSpec: "0xc8cd1/23",
@@ -331,7 +356,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "hexNodeId",
     nodeId: 822481,
     nodeIdSize: 23,
-    nodePrev: "00000000001919a2",
+    nodePrev: 0x00000000001919a2n,
   },
   {
     nodeSpec: "0x26eff5/23",
@@ -339,7 +364,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "hexNodeId",
     nodeId: 2551797,
     nodeIdSize: 23,
-    nodePrev: "00000000004ddfea",
+    nodePrev: 0x00000000004ddfean,
   },
   {
     nodeSpec: "0x7c6bc4/23",
@@ -347,7 +372,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "hexNodeId",
     nodeId: 8154052,
     nodeIdSize: 23,
-    nodePrev: "0000000000f8d788",
+    nodePrev: 0x0000000000f8d788n,
   },
   {
     nodeSpec: "v0rbps7ay8ks/1",
@@ -355,7 +380,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "nodePrev",
     nodeId: 0,
     nodeIdSize: 1,
-    nodePrev: "38a9e683bb4425ec",
+    nodePrev: 0x38a9e683bb4425ecn,
   },
   {
     nodeSpec: "v0rbps7ay8ks/8",
@@ -363,7 +388,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "nodePrev",
     nodeId: 68,
     nodeIdSize: 8,
-    nodePrev: "38a9e683bb4425ec",
+    nodePrev: 0x38a9e683bb4425ecn,
   },
   {
     nodeSpec: "v0rbps7ay8ks/16",
@@ -371,7 +396,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "nodePrev",
     nodeId: 17445,
     nodeIdSize: 16,
-    nodePrev: "38a9e683bb4425ec",
+    nodePrev: 0x38a9e683bb4425ecn,
   },
   {
     nodeSpec: "v0rbps7ay8ks/23",
@@ -379,7 +404,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "nodePrev",
     nodeId: 2233078,
     nodeIdSize: 23,
-    nodePrev: "38a9e683bb4425ec",
+    nodePrev: 0x38a9e683bb4425ecn,
   },
   {
     nodeSpec: "z0jndjt42op2/1",
@@ -387,7 +412,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "nodePrev",
     nodeId: 1,
     nodeIdSize: 1,
-    nodePrev: "3ff596748ea77186",
+    nodePrev: 0x3ff596748ea77186n,
   },
   {
     nodeSpec: "z0jndjt42op2/8",
@@ -395,7 +420,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "nodePrev",
     nodeId: 167,
     nodeIdSize: 8,
-    nodePrev: "3ff596748ea77186",
+    nodePrev: 0x3ff596748ea77186n,
   },
   {
     nodeSpec: "z0jndjt42op2/16",
@@ -403,7 +428,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "nodePrev",
     nodeId: 42865,
     nodeIdSize: 16,
-    nodePrev: "3ff596748ea77186",
+    nodePrev: 0x3ff596748ea77186n,
   },
   {
     nodeSpec: "z0jndjt42op2/23",
@@ -411,7 +436,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "nodePrev",
     nodeId: 5486787,
     nodeIdSize: 23,
-    nodePrev: "3ff596748ea77186",
+    nodePrev: 0x3ff596748ea77186n,
   },
   {
     nodeSpec: "f2bembkd4zrb/1",
@@ -419,7 +444,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "nodePrev",
     nodeId: 1,
     nodeIdSize: 1,
-    nodePrev: "1b844eb5d1aebb07",
+    nodePrev: 0x1b844eb5d1aebb07n,
   },
   {
     nodeSpec: "f2bembkd4zrb/8",
@@ -427,7 +452,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "nodePrev",
     nodeId: 174,
     nodeIdSize: 8,
-    nodePrev: "1b844eb5d1aebb07",
+    nodePrev: 0x1b844eb5d1aebb07n,
   },
   {
     nodeSpec: "f2bembkd4zrb/16",
@@ -435,7 +460,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "nodePrev",
     nodeId: 44731,
     nodeIdSize: 16,
-    nodePrev: "1b844eb5d1aebb07",
+    nodePrev: 0x1b844eb5d1aebb07n,
   },
   {
     nodeSpec: "f2bembkd4zrb/23",
@@ -443,7 +468,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "nodePrev",
     nodeId: 5725571,
     nodeIdSize: 23,
-    nodePrev: "1b844eb5d1aebb07",
+    nodePrev: 0x1b844eb5d1aebb07n,
   },
   {
     nodeSpec: "mkg0fd5p76pp/1",
@@ -451,7 +476,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "nodePrev",
     nodeId: 0,
     nodeIdSize: 1,
-    nodePrev: "29391373ab449abd",
+    nodePrev: 0x29391373ab449abdn,
   },
   {
     nodeSpec: "mkg0fd5p76pp/8",
@@ -459,7 +484,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "nodePrev",
     nodeId: 68,
     nodeIdSize: 8,
-    nodePrev: "29391373ab449abd",
+    nodePrev: 0x29391373ab449abdn,
   },
   {
     nodeSpec: "mkg0fd5p76pp/16",
@@ -467,7 +492,7 @@ const EXAMPLE_NODE_SPECS = [
     specType: "nodePrev",
     nodeId: 17562,
     nodeIdSize: 16,
-    nodePrev: "29391373ab449abd",
+    nodePrev: 0x29391373ab449abdn,
   },
   {
     nodeSpec: "mkg0fd5p76pp/23",
@@ -475,6 +500,11 @@ const EXAMPLE_NODE_SPECS = [
     specType: "nodePrev",
     nodeId: 2248030,
     nodeIdSize: 23,
-    nodePrev: "29391373ab449abd",
+    nodePrev: 0x29391373ab449abdn,
   },
 ];
+
+for (const e of EXAMPLE_NODE_SPECS) {
+  e.nodePrevBytes = new Uint8Array(8);
+  new DataView(e.nodePrevBytes.buffer).setBigUint64(0, e.nodePrev);
+}

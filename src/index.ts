@@ -398,9 +398,31 @@ export class Scru64Generator {
     return this.prevNodeCtr >>> this.counterSize;
   }
 
+  /**
+   * Returns the `nodePrev` value if `this` is constructed with one or
+   * `undefined` otherwise.
+   */
+  getNodePrev(): Scru64Id | undefined {
+    if (this.prevTimestamp > 0) {
+      return Scru64Id.fromParts(this.prevTimestamp, this.prevNodeCtr);
+    } else {
+      return undefined;
+    }
+  }
+
   /** Returns the size in bits of the `nodeId` adopted by the generator. */
   getNodeIdSize(): number {
     return NODE_CTR_SIZE - this.counterSize;
+  }
+
+  /**
+   * Returns the node configuration specifier describing the generator state.
+   */
+  getNodeSpec(): string {
+    const nodePrev = this.getNodePrev();
+    return nodePrev !== undefined
+      ? `${nodePrev.toString()}/${this.getNodeIdSize()}`
+      : `${this.getNodeId()}/${this.getNodeIdSize()}`;
   }
 
   /**
@@ -675,9 +697,19 @@ export class GlobalGenerator {
     return getGlobalGenerator().getNodeId();
   }
 
+  /** Calls {@link Scru64Generator.getNodePrev} of the global generator. */
+  static getNodePrev(): Scru64Id | undefined {
+    return getGlobalGenerator().getNodePrev();
+  }
+
   /** Calls {@link Scru64Generator.getNodeIdSize} of the global generator. */
   static getNodeIdSize(): number {
     return getGlobalGenerator().getNodeIdSize();
+  }
+
+  /** Calls {@link Scru64Generator.getNodeSpec} of the global generator. */
+  static getNodeSpec(): string {
+    return getGlobalGenerator().getNodeSpec();
   }
 }
 
