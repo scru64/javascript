@@ -647,6 +647,12 @@ const getGlobalGenerator = (): Scru64Generator => {
 /**
  * The gateway object that forwards supported method calls to the process-wide
  * global generator.
+ *
+ * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+ * global variable by default, and it throws an error if it fails to read a
+ * well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`,
+ * `"0u2r85hm2pt3/16"`) when a generator method is first called. See also
+ * {@link NodeSpec} for the node spec string format.
  */
 export class GlobalGenerator {
   private constructor() {}
