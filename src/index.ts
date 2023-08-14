@@ -185,6 +185,8 @@ export class Scru64Id {
     ) {
       throw new RangeError("`nodeCtr` out of range");
     }
+    // no further check is necessary because `MAX_SCRU64_INT` happens to equal
+    // `MAX_TIMESTAMP << 24 | MAX_NODE_CTR`
 
     const bytes = new Uint8Array(8);
     bytes[0] = timestamp / 0x1_0000_0000;
@@ -195,11 +197,7 @@ export class Scru64Id {
     bytes[5] = nodeCtr >>> 16;
     bytes[6] = nodeCtr >>> 8;
     bytes[7] = nodeCtr;
-
-    // upper bound check is necessary when `timestamp` is at max
-    return timestamp === MAX_TIMESTAMP
-      ? Scru64Id.ofInner(bytes)
-      : new Scru64Id(bytes);
+    return new Scru64Id(bytes);
   }
 
   /** Returns the `timestamp` field value. */

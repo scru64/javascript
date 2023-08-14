@@ -118,6 +118,13 @@ describe("Scru64Id", function () {
       }, SyntaxError);
     }
   });
+
+  it("rejects `MAX + 1` even if passed as pair of fields", function () {
+    assertThrows(() => {
+      const max = 36n ** 12n - 1n;
+      Scru64Id.fromParts(Number(max >> 24n), Number(max & 0xff_ffffn) + 1);
+    }, RangeError);
+  });
 });
 
 const EXAMPLE_IDS = [
