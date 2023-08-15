@@ -18,6 +18,11 @@
 <section class="tsd-panel tsd-comment">
 <div class="tsd-comment tsd-typography"><p>The gateway object that forwards supported method calls to the process-wide
 global generator.</p>
+<p>The global generator reads the node configuration from the <code>SCRU64_NODE_SPEC</code>
+global variable by default, and it throws an error if it fails to read a
+well-formed node spec string (e.g., <code>&quot;42/8&quot;</code>, <code>&quot;0xb00/12&quot;</code>,
+<code>&quot;0u2r85hm2pt3/16&quot;</code>) when a generator method is first called. See also
+<a href="../types/NodeSpec.html" class="tsd-kind-type-alias">NodeSpec</a> for the node spec string format.</p>
 </div>
 <div class="tsd-comment tsd-typography"></div></section>
 <section class="tsd-panel tsd-hierarchy">
@@ -25,7 +30,7 @@ global generator.</p>
 <ul class="tsd-hierarchy">
 <li><span class="target">GlobalGenerator</span></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.0-beta.1/src/index.ts#L651">index.ts:651</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.1/src/index.ts#L655">index.ts:655</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-index-accordion" open><summary class="tsd-accordion-summary tsd-index-summary">
@@ -55,7 +60,7 @@ global generator.</p>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <a href="GlobalGenerator.html" class="tsd-signature-type tsd-kind-class">GlobalGenerator</a></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.0-beta.1/src/index.ts#L652">index.ts:652</a></li></ul></aside></li></ul></section></section>
+<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.1/src/index.ts#L656">index.ts:656</a></li></ul></aside></li></ul></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Methods</h2>
 <section class="tsd-panel tsd-member"><a id="generate" class="tsd-anchor"></a>
@@ -68,7 +73,7 @@ global generator.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="Scru64Id.html" class="tsd-signature-type tsd-kind-class">Scru64Id</a></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.0-beta.1/src/index.ts#L678">index.ts:678</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.1/src/index.ts#L682">index.ts:682</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="generateOrAwait" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>generate<wbr/>Or<wbr/>Await</span><a href="#generateOrAwait" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -79,7 +84,7 @@ global generator.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="Scru64Id.html" class="tsd-signature-type tsd-kind-class">Scru64Id</a><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.0-beta.1/src/index.ts#L688">index.ts:688</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.1/src/index.ts#L692">index.ts:692</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="generateOrSleep" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>generate<wbr/>Or<wbr/>Sleep</span><a href="#generateOrSleep" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -90,7 +95,7 @@ global generator.</p>
 <h4 class="tsd-returns-title">Returns <a href="Scru64Id.html" class="tsd-signature-type tsd-kind-class">Scru64Id</a></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.0-beta.1/src/index.ts#L683">index.ts:683</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.1/src/index.ts#L687">index.ts:687</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getNodeId" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>get<wbr/>Node<wbr/>Id</span><a href="#getNodeId" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -101,7 +106,7 @@ global generator.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">number</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.0-beta.1/src/index.ts#L693">index.ts:693</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.1/src/index.ts#L697">index.ts:697</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getNodeIdSize" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>get<wbr/>Node<wbr/>Id<wbr/>Size</span><a href="#getNodeIdSize" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -112,7 +117,7 @@ global generator.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">number</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.0-beta.1/src/index.ts#L703">index.ts:703</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.1/src/index.ts#L707">index.ts:707</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getNodePrev" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>get<wbr/>Node<wbr/>Prev</span><a href="#getNodePrev" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -123,7 +128,7 @@ global generator.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="Scru64Id.html" class="tsd-signature-type tsd-kind-class">Scru64Id</a></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.0-beta.1/src/index.ts#L698">index.ts:698</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.1/src/index.ts#L702">index.ts:702</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getNodeSpec" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>get<wbr/>Node<wbr/>Spec</span><a href="#getNodeSpec" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -134,7 +139,7 @@ global generator.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.0-beta.1/src/index.ts#L708">index.ts:708</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.1/src/index.ts#L712">index.ts:712</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="initialize" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>initialize</span><a href="#initialize" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -160,7 +165,7 @@ if it preserves the existing configuration.</p>
 argument represents an invalid node spec.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.0-beta.1/src/index.ts#L668">index.ts:668</a></li></ul></aside></li></ul></section></section></div>
+<li>Defined in <a href="https://github.com/scru64/javascript/blob/v0.3.1/src/index.ts#L672">index.ts:672</a></li></ul></aside></li></ul></section></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
