@@ -38,6 +38,18 @@ unique time-ordered identifiers, consider [SCRU128].
 [SCRU64 Specification]: https://github.com/scru64/spec
 [SCRU128]: https://github.com/scru128/spec
 
+## Command-line interface
+
+```bash
+$ SCRU64_NODE_SPEC=42/8 npx scru64
+0uc3xnefo50h
+$ SCRU64_NODE_SPEC=42/8 npx scru64 -n 4
+0uc3xnl3eas9
+0uc3xnl3easa
+0uc3xnl3easb
+0uc3xnl3easc
+```
+
 ## License
 
 Licensed under the Apache License, Version 2.0.
