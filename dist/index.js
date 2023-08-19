@@ -657,4 +657,15 @@ export const scru64 = async () => GlobalGenerator.generateOrAwait();
  *
  * @throws Error if the global generator is not properly configured.
  */
-export const scru64String = async () => (await scru64()).toString();
+export const scru64String = async () => {
+    const DELAY = 64;
+    while (true) {
+        const value = GlobalGenerator.generate();
+        if (value !== undefined) {
+            return value.toString();
+        }
+        else {
+            await new Promise((resolve) => setTimeout(resolve, DELAY));
+        }
+    }
+};
