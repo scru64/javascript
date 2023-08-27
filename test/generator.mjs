@@ -61,6 +61,7 @@ describe("Scru64Generator", function () {
       "1024/8",
       "0000000000001/8",
       "1/0016",
+      "42/800",
     ];
 
     for (const e of cases) {
@@ -70,7 +71,7 @@ describe("Scru64Generator", function () {
     }
   });
 
-  const testConsecutivePair = (first, second) => {
+  const assertConsecutive = (first, second) => {
     assert(first.compareTo(second) < 0);
     if (first.timestamp === second.timestamp) {
       assert(first.nodeCtr + 1 === second.nodeCtr);
@@ -93,7 +94,7 @@ describe("Scru64Generator", function () {
       for (let i = 0; i < N_LOOPS; i++) {
         ts += 16;
         const curr = g.generateOrResetCore(ts, ALLOWANCE);
-        testConsecutivePair(prev, curr);
+        assertConsecutive(prev, curr);
         assert(curr.timestamp - ts / 256 < ALLOWANCE / 256);
         assert(curr.nodeCtr >> counterSize === nodeId);
 
@@ -106,7 +107,7 @@ describe("Scru64Generator", function () {
       for (let i = 0; i < N_LOOPS; i++) {
         ts -= 16;
         const curr = g.generateOrResetCore(ts, ALLOWANCE);
-        testConsecutivePair(prev, curr);
+        assertConsecutive(prev, curr);
         assert(curr.timestamp - ts / 256 < ALLOWANCE / 256);
         assert(curr.nodeCtr >> counterSize === nodeId);
 
@@ -143,7 +144,7 @@ describe("Scru64Generator", function () {
         ts += 16;
         const curr = g.generateOrAbortCore(ts, ALLOWANCE);
         assert(curr !== undefined);
-        testConsecutivePair(prev, curr);
+        assertConsecutive(prev, curr);
         assert(curr.timestamp - ts / 256 < ALLOWANCE / 256);
         assert(curr.nodeCtr >> counterSize === nodeId);
 
@@ -157,7 +158,7 @@ describe("Scru64Generator", function () {
         ts -= 16;
         const curr = g.generateOrAbortCore(ts, ALLOWANCE);
         assert(curr !== undefined);
-        testConsecutivePair(prev, curr);
+        assertConsecutive(prev, curr);
         assert(curr.timestamp - ts / 256 < ALLOWANCE / 256);
         assert(curr.nodeCtr >> counterSize === nodeId);
 
