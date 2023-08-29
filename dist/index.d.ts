@@ -21,7 +21,7 @@ export declare class Scru64Id {
      * holds the reference to the underlying buffer.
      *
      * @throws RangeError if the length of the argument is not 8 or the argument
-     * contains an integer out of the valid value range.
+     * contains an unsigned integer larger than `36^12 - 1`.
      */
     static ofInner(bytes: Readonly<Uint8Array>): Scru64Id;
     /**
@@ -50,7 +50,8 @@ export declare class Scru64Id {
      * Creates a value from the `timestamp` and the combined `nodeCtr` field
      * value.
      *
-     * @throws RangeError if any argument is out of the valid value range.
+     * @throws RangeError if any argument is negative or larger than their
+     * respective maximum value (`36^12 / 2^24 - 1` and `2^24 - 1`, respectively).
      * @category Conversion
      */
     static fromParts(timestamp: number, nodeCtr: number): Scru64Id;
@@ -64,7 +65,7 @@ export declare class Scru64Id {
     /**
      * Creates an object from a 64-bit unsigned integer.
      *
-     * @throws RangeError if the argument is out of the valid value range.
+     * @throws RangeError if the argument is negative or larger than `36^12 - 1`.
      * @category Conversion
      */
     static fromBigInt(value: bigint): Scru64Id;
