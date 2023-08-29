@@ -32,6 +32,7 @@ describe("DefaultCounterMode", function () {
             countsByPos[j] += n & 1;
             n >>>= 1;
           }
+          assert(n === 0);
         }
 
         const filled = Math.max(0, counterSize - overflowGuardSize);

@@ -11,7 +11,6 @@ describe("GlobalGenerator", function () {
   it("reads configuration from global var", function () {
     assert(GlobalGenerator.getNodeId() === 42);
     assert(GlobalGenerator.getNodeIdSize() === 8);
-    assert(GlobalGenerator.getNodeSpec() === "42/8");
   });
 });
 

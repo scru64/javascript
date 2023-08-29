@@ -52,6 +52,9 @@ describe("Scru64Id", function () {
       assert(prev.compareTo(curr) < 0);
       assert(curr.compareTo(prev) > 0);
 
+      assert(prev.toBigInt() < curr.toBigInt());
+      assert(prev.toString() < curr.toString());
+
       prev = curr;
     }
   });
@@ -124,6 +127,16 @@ describe("Scru64Id", function () {
       const max = 36n ** 12n - 1n;
       Scru64Id.fromParts(Number(max >> 24n), Number(max & 0xff_ffffn) + 1);
     }, RangeError);
+  });
+
+  it("supports serialization and deserialization", function () {
+    for (const e of EXAMPLE_IDS) {
+      const x = Scru64Id.fromParts(e.timestamp, e.nodeCtr);
+      const json = `"${e.text}"`;
+
+      assert(JSON.stringify(x) === json);
+      assert(JSON.parse(json, (_, val) => Scru64Id.fromString(val)).equals(x));
+    }
   });
 });
 

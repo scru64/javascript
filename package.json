@@ -1,6 +1,6 @@
 {
   "name": "scru64",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "SCRU64: Sortable, Clock-based, Realm-specifically Unique identifier",
   "type": "module",
   "main": "dist/index.js",
@@ -31,7 +31,7 @@
   "homepage": "https://github.com/scru64/javascript#readme",
   "devDependencies": {
     "mocha": "^10.2.0",
-    "typedoc": "^0.24.8",
-    "typescript": "^5.1.6"
+    "typedoc": "^0.25.0",
+    "typescript": "^5.2.2"
   }
 }
