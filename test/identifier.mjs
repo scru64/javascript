@@ -123,19 +123,24 @@ describe("Scru64Id", function () {
   });
 
   it("rejects `MAX + 1` even if passed as pair of fields", function () {
+    const max = 36n ** 12n - 1n;
     assertThrows(() => {
-      const max = 36n ** 12n - 1n;
       Scru64Id.fromParts(Number(max >> 24n), Number(max & 0xff_ffffn) + 1);
+    }, RangeError);
+    assertThrows(() => {
+      Scru64Id.fromParts(Number(max >> 24n) + 1, 0);
     }, RangeError);
   });
 
   it("supports serialization and deserialization", function () {
     for (const e of EXAMPLE_IDS) {
       const x = Scru64Id.fromParts(e.timestamp, e.nodeCtr);
-      const json = `"${e.text}"`;
+      const expected = JSON.stringify(e.text);
 
-      assert(JSON.stringify(x) === json);
-      assert(JSON.parse(json, (_, val) => Scru64Id.fromString(val)).equals(x));
+      assert(JSON.stringify(x) === expected);
+      assert(
+        JSON.parse(expected, (_, val) => Scru64Id.fromString(val)).equals(x),
+      );
     }
   });
 });
