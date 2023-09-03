@@ -291,7 +291,7 @@ export class Scru64Id {
 /**
  * Represents a SCRU64 ID generator.
  *
- * The generator offers six different methods to generate a SCRU64 ID:
+ * The generator comes with several different methods that generate a SCRU64 ID:
  *
  * | Flavor                      | Timestamp | On big clock rewind |
  * | --------------------------- | --------- | ------------------- |
@@ -302,14 +302,22 @@ export class Scru64Id {
  * | {@link generateOrAbortCore} | Argument  | Returns `undefined` |
  * | {@link generateOrResetCore} | Argument  | Resets generator    |
  *
- * All of these methods return monotonically increasing IDs unless a timestamp
- * provided is significantly (by default, approx. 10 seconds) smaller than the
- * one embedded in the immediately preceding ID. If such a significant clock
- * rollback is detected, (1) the `generate` (OrAbort) method aborts and returns
- * `undefined`; (2) the `OrReset` variants reset the generator and return a new
- * ID based on the given timestamp; and, (3) the `OrSleep` and `OrAwait` methods
- * sleep and wait for the next timestamp tick. The `Core` functions offer
- * low-level primitives.
+ * All of these methods return a monotonically increasing ID by reusing the
+ * previous `timestamp` even if the one provided is smaller than the immediately
+ * preceding ID's, unless such a clock rollback is considered significant (by
+ * default, approx. 10 seconds). A clock rollback may also be detected when a
+ * generator has generated too many IDs within a certain unit of time, because
+ * this implementation increments the previous `timestamp` when `counter`
+ * reaches the limit to continue instant monotonic generation. When a
+ * significant clock rollback is detected:
+ *
+ * 1. `generate` (OrAbort) methods abort and return `undefined` immediately.
+ * 2. `OrReset` variants reset the generator and return a new ID based on the
+ *    given `timestamp`, breaking the increasing order of IDs.
+ * 3. `OrSleep` and `OrAwait` methods sleep and wait for the next timestamp
+ *    tick.
+ *
+ * The `Core` functions offer low-level primitives to customize the behavior.
  */
 export class Scru64Generator {
   private prevTimestamp: number;
