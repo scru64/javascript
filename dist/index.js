@@ -251,7 +251,7 @@ export class Scru64Id {
 /**
  * Represents a SCRU64 ID generator.
  *
- * The generator offers six different methods to generate a SCRU64 ID:
+ * The generator comes with several different methods that generate a SCRU64 ID:
  *
  * | Flavor                      | Timestamp | On big clock rewind |
  * | --------------------------- | --------- | ------------------- |
@@ -262,14 +262,22 @@ export class Scru64Id {
  * | {@link generateOrAbortCore} | Argument  | Returns `undefined` |
  * | {@link generateOrResetCore} | Argument  | Resets generator    |
  *
- * All of these methods return monotonically increasing IDs unless a timestamp
- * provided is significantly (by default, approx. 10 seconds) smaller than the
- * one embedded in the immediately preceding ID. If such a significant clock
- * rollback is detected, (1) the `generate` (OrAbort) method aborts and returns
- * `undefined`; (2) the `OrReset` variants reset the generator and return a new
- * ID based on the given timestamp; and, (3) the `OrSleep` and `OrAwait` methods
- * sleep and wait for the next timestamp tick. The `Core` functions offer
- * low-level primitives.
+ * All of these methods return a monotonically increasing ID by reusing the
+ * previous `timestamp` even if the one provided is smaller than the immediately
+ * preceding ID's, unless such a clock rollback is considered significant (by
+ * default, approx. 10 seconds). A clock rollback may also be detected when a
+ * generator has generated too many IDs within a certain unit of time, because
+ * this implementation increments the previous `timestamp` when `counter`
+ * reaches the limit to continue instant monotonic generation. When a
+ * significant clock rollback is detected:
+ *
+ * 1. `generate` (OrAbort) methods abort and return `undefined` immediately.
+ * 2. `OrReset` variants reset the generator and return a new ID based on the
+ *    given `timestamp`, breaking the increasing order of IDs.
+ * 3. `OrSleep` and `OrAwait` methods sleep and wait for the next timestamp
+ *    tick.
+ *
+ * The `Core` functions offer low-level primitives to customize the behavior.
  */
 export class Scru64Generator {
     /**
@@ -535,11 +543,14 @@ const getGlobalGenerator = () => {
  * The gateway object that forwards supported method calls to the process-wide
  * global generator.
  *
- * The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
- * global variable by default, and it throws an error if it fails to read a
- * well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`,
- * `"0u2r85hm2pt3/16"`) when a generator method is first called. See also
- * {@link NodeSpec} for the node spec string format.
+ * By default, the global generator reads the node configuration from the
+ * `SCRU64_NODE_SPEC` global variable when a generator method is first called,
+ * and it throws an error if it fails to do so. The node configuration is
+ * encoded in a node spec string consisting of `nodeId` and `nodeIdSize`
+ * integers separated by a slash (e.g., "42/8", "0xb00/12"; see {@link NodeSpec}
+ * for details). You can configure the global generator differently by calling
+ * {@link GlobalGenerator.initialize} before the default initializer is
+ * triggered.
  */
 export class GlobalGenerator {
     constructor() { }
@@ -598,11 +609,14 @@ export class GlobalGenerator {
 /**
  * Generates a new SCRU64 ID object using the global generator.
  *
- * The {@link GlobalGenerator} reads the node configuration from the
- * `SCRU64_NODE_SPEC` global variable by default, and it throws an error if it
- * fails to read a well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`,
- * `"0u2r85hm2pt3/16"`) when a generator method is first called. See also
- * {@link NodeSpec} for the node spec string format.
+ * By default, the global generator reads the node configuration from the
+ * `SCRU64_NODE_SPEC` global variable when a generator method is first called,
+ * and it throws an error if it fails to do so. The node configuration is
+ * encoded in a node spec string consisting of `nodeId` and `nodeIdSize`
+ * integers separated by a slash (e.g., "42/8", "0xb00/12"; see {@link NodeSpec}
+ * for details). You can configure the global generator differently by calling
+ * {@link GlobalGenerator.initialize} before the default initializer is
+ * triggered.
  *
  * This function usually returns a value immediately, but if not possible, it
  * sleeps and waits for the next timestamp tick. It employs a blocking busy loop
@@ -615,11 +629,14 @@ export const scru64Sync = () => GlobalGenerator.generateOrSleep();
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
  * representation using the global generator.
  *
- * The {@link GlobalGenerator} reads the node configuration from the
- * `SCRU64_NODE_SPEC` global variable by default, and it throws an error if it
- * fails to read a well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`,
- * `"0u2r85hm2pt3/16"`) when a generator method is first called. See also
- * {@link NodeSpec} for the node spec string format.
+ * By default, the global generator reads the node configuration from the
+ * `SCRU64_NODE_SPEC` global variable when a generator method is first called,
+ * and it throws an error if it fails to do so. The node configuration is
+ * encoded in a node spec string consisting of `nodeId` and `nodeIdSize`
+ * integers separated by a slash (e.g., "42/8", "0xb00/12"; see {@link NodeSpec}
+ * for details). You can configure the global generator differently by calling
+ * {@link GlobalGenerator.initialize} before the default initializer is
+ * triggered.
  *
  * This function usually returns a value immediately, but if not possible, it
  * sleeps and waits for the next timestamp tick. It employs a blocking busy loop
@@ -631,11 +648,14 @@ export const scru64StringSync = () => scru64Sync().toString();
 /**
  * Generates a new SCRU64 ID object using the global generator.
  *
- * The {@link GlobalGenerator} reads the node configuration from the
- * `SCRU64_NODE_SPEC` global variable by default, and it throws an error if it
- * fails to read a well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`,
- * `"0u2r85hm2pt3/16"`) when a generator method is first called. See also
- * {@link NodeSpec} for the node spec string format.
+ * By default, the global generator reads the node configuration from the
+ * `SCRU64_NODE_SPEC` global variable when a generator method is first called,
+ * and it throws an error if it fails to do so. The node configuration is
+ * encoded in a node spec string consisting of `nodeId` and `nodeIdSize`
+ * integers separated by a slash (e.g., "42/8", "0xb00/12"; see {@link NodeSpec}
+ * for details). You can configure the global generator differently by calling
+ * {@link GlobalGenerator.initialize} before the default initializer is
+ * triggered.
  *
  * This function usually returns a value immediately, but if not possible, it
  * sleeps and waits for the next timestamp tick.
@@ -647,11 +667,14 @@ export const scru64 = async () => GlobalGenerator.generateOrAwait();
  * Generates a new SCRU64 ID encoded in the 12-digit canonical string
  * representation using the global generator.
  *
- * The {@link GlobalGenerator} reads the node configuration from the
- * `SCRU64_NODE_SPEC` global variable by default, and it throws an error if it
- * fails to read a well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`,
- * `"0u2r85hm2pt3/16"`) when a generator method is first called. See also
- * {@link NodeSpec} for the node spec string format.
+ * By default, the global generator reads the node configuration from the
+ * `SCRU64_NODE_SPEC` global variable when a generator method is first called,
+ * and it throws an error if it fails to do so. The node configuration is
+ * encoded in a node spec string consisting of `nodeId` and `nodeIdSize`
+ * integers separated by a slash (e.g., "42/8", "0xb00/12"; see {@link NodeSpec}
+ * for details). You can configure the global generator differently by calling
+ * {@link GlobalGenerator.initialize} before the default initializer is
+ * triggered.
  *
  * This function usually returns a value immediately, but if not possible, it
  * sleeps and waits for the next timestamp tick.

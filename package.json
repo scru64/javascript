@@ -1,12 +1,14 @@
 {
   "name": "scru64",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "SCRU64: Sortable, Clock-based, Realm-specifically Unique identifier",
   "type": "module",
   "main": "dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": "./dist/index.js",
-  "bin": "./cli.js",
+  "bin": {
+    "scru64": "cli.js"
+  },
   "files": [
     "dist"
   ],
@@ -31,7 +33,7 @@
   "homepage": "https://github.com/scru64/javascript#readme",
   "devDependencies": {
     "mocha": "^10.2.0",
-    "typedoc": "^0.25.0",
+    "typedoc": "^0.25.1",
     "typescript": "^5.2.2"
   }
 }

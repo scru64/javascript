@@ -7,10 +7,10 @@ describe("DefaultCounterMode", function () {
    * thus may fail at a certain low probability.
    */
   it("returns random numbers, setting guard bits to zero (this test may fail)", function () {
-    const N = 4096;
+    const N_LOOPS = 4096;
 
     // set margin based on binom dist 99.999999% confidence interval
-    const margin = 5.730729 * Math.sqrt((0.5 * 0.5) / N);
+    const margin = 5.730729 * Math.sqrt((0.5 * 0.5) / N_LOOPS);
 
     const context = {
       timestamp: 0x0123_4567_89ab,
@@ -26,7 +26,7 @@ describe("DefaultCounterMode", function () {
         const countsByPos = new Array(24).fill(0);
 
         const c = new DefaultCounterMode(overflowGuardSize);
-        for (let i = 0; i < N; i++) {
+        for (let i = 0; i < N_LOOPS; i++) {
           let n = c.renew(counterSize, context);
           for (let j = 0; j < countsByPos.length; j++) {
             countsByPos[j] += n & 1;
@@ -37,7 +37,7 @@ describe("DefaultCounterMode", function () {
 
         const filled = Math.max(0, counterSize - overflowGuardSize);
         for (const e of countsByPos.slice(0, filled)) {
-          assert(Math.abs(e / N - 0.5) < margin);
+          assert(Math.abs(e / N_LOOPS - 0.5) < margin);
         }
         for (const e of countsByPos.slice(filled)) {
           assert(e === 0);
