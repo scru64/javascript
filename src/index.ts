@@ -459,6 +459,10 @@ export class Scru64Generator {
    * the generator upon significant timestamp rollback.
    *
    * See the {@link Scru64Generator} class documentation for the description.
+   *
+   * Note that this mode of generation is not recommended because rewinding
+   * `timestamp` without changing `nodeId` considerably increases the risk of
+   * duplicate results.
    */
   generateOrReset(): Scru64Id {
     return this.generateOrResetCore(Date.now(), 10_000);
@@ -507,6 +511,10 @@ export class Scru64Generator {
    * resets the generator upon significant timestamp rollback.
    *
    * See the {@link Scru64Generator} class documentation for the description.
+   *
+   * Note that this mode of generation is not recommended because rewinding
+   * `timestamp` without changing `nodeId` considerably increases the risk of
+   * duplicate results.
    *
    * @param rollbackAllowance - The amount of `unixTsMs` rollback that is
    * considered significant. A suggested value is `10_000` (milliseconds).
