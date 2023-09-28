@@ -18,7 +18,7 @@ globalThis.SCRU64_NODE_SPEC = "42/8";
 
 import { scru64Sync, scru64StringSync } from "scru64";
 // or on browsers:
-// import { scru64Sync, scru64StringSync } from "https://unpkg.com/scru64@^0.3";
+// import { scru64Sync, scru64StringSync } from "https://unpkg.com/scru64@^1";
 
 // generate a new identifier object
 const x = scru64Sync();

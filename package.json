@@ -1,6 +1,6 @@
 {
   "name": "scru64",
-  "version": "0.3.5",
+  "version": "1.0.0",
   "description": "SCRU64: Sortable, Clock-based, Realm-specifically Unique identifier",
   "type": "module",
   "main": "dist/index.js",
@@ -10,6 +10,7 @@
     "scru64": "cli.js"
   },
   "files": [
+    "CHANGELOG.md",
     "dist"
   ],
   "sideEffects": false,

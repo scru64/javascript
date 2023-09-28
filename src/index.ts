@@ -207,7 +207,7 @@ export class Scru64Id {
   }
 
   /**
-   * Returns the `nodeId` and `counter` field values combined as a single
+   * Returns the `nodeId` and `counter` field values combined as a single 24-bit
    * integer.
    */
   get nodeCtr(): number {
